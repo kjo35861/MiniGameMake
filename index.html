@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>늑대를 찾아라</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23cdf0a4'/%3E%3Ctext x='16' y='23' font-size='20' text-anchor='middle'%3E%F0%9F%90%BA%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky:#bfe7ff;
+    --grass-1:#cdf0a4;
+    --grass-2:#8fd45c;
+    --panel:#fffaf0;
+    --panel-2:#fdf3d9;
+    --line:#e3d3a0;
+    --ink:#3b2f22;
+    --ink-soft:#7a6a4f;
+    --ink-faint:#a39270;
+    --wolf:#e2543a;
+    --wolf-soft:#fbe1da;
+    --success:#4d9c3f;
+    --sun:#f7b733;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(120px circle at 85% 8%, var(--sun), transparent 60%),
+      radial-gradient(180px 70px at 15% 12%, rgba(255,255,255,0.9), transparent 70%),
+      radial-gradient(140px 60px at 70% 18%, rgba(255,255,255,0.85), transparent 70%),
+      linear-gradient(to bottom, var(--sky) 0%, var(--sky) 32%, var(--grass-1) 32%, var(--grass-2) 100%);
+    color:var(--ink);
+    font-family:'Baloo 2', ui-rounded, 'SF Pro Rounded', sans-serif;
+    display:flex;
+    justify-content:center;
+    padding:26px 16px 36px;
+  }
+
+  .app{ width:100%; max-width:560px; }
+
+  h1{
+    font-family:'Baloo 2', sans-serif;
+    font-size:clamp(1.5rem, 4.5vw, 1.9rem);
+    font-weight:700;
+    margin:0 0 4px;
+    color:var(--ink);
+  }
+  .subtitle{ color:var(--ink-soft); font-size:12.5px; margin:0 0 18px; }
+
+  .panel{
+    background:var(--panel);
+    border:2px solid var(--line);
+    border-radius:18px;
+    padding:20px;
+    box-shadow:0 10px 26px rgba(90,70,30,0.10);
+  }
+
+  .rules{
+    font-size:12.5px;
+    line-height:1.7;
+    color:var(--ink-soft);
+    margin:0 0 18px;
+  }
+  .rules strong{ color:var(--wolf); }
+
+  /* ---------- difficulty select ---------- */
+  .diff-row{
+    display:flex;
+    gap:8px;
+    margin-bottom:18px;
+  }
+  .diff-btn{
+    all:unset;
+    box-sizing:border-box;
+    flex:1;
+    text-align:center;
+    padding:12px 8px;
+    border:2px solid var(--line);
+    border-radius:12px;
+    cursor:pointer;
+    font-family:'Baloo 2', sans-serif;
+    font-weight:600;
+    font-size:13.5px;
+    color:var(--ink-soft);
+    transition:border-color .15s ease, color .15s ease, background .15s ease;
+  }
+  .diff-btn[aria-pressed="true"]{
+    border-color:var(--wolf);
+    color:var(--ink);
+    background:var(--wolf-soft);
+  }
+  .diff-btn:focus-visible{ outline:2px solid var(--wolf); outline-offset:2px; }
+
+  .best-table{
+    display:flex;
+    gap:8px;
+    margin-bottom:20px;
+  }
+  .best-pill{
+    flex:1;
+    background:var(--panel-2);
+    border:2px solid var(--line);
+    border-radius:12px;
+    padding:10px 12px;
+    text-align:center;
+  }
+  .best-pill .label{ display:block; font-size:10px; color:var(--ink-faint); margin-bottom:4px; }
+  .best-pill .value{ font-family:'Baloo 2', sans-serif; font-weight:700; font-size:18px; color:var(--ink); }
+
+  .start-btn{
+    all:unset;
+    box-sizing:border-box;
+    display:block;
+    width:100%;
+    text-align:center;
+    padding:17px;
+    border-radius:999px;
+    background:var(--success);
+    color:#fff;
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:17px;
+    cursor:pointer;
+    transition:transform .1s ease, box-shadow .15s ease;
+  }
+  .start-btn:hover{ transform:translateY(-1px); box-shadow:0 8px 20px rgba(77,156,63,0.35); }
+  .start-btn:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
+
+  /* ---------- shared toggle controls ---------- */
+  .top-controls{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+    margin-bottom:12px;
+  }
+  .toggle-btn{
+    all:unset;
+    box-sizing:border-box;
+    font-family:'Baloo 2', ui-rounded, 'SF Pro Rounded', sans-serif;
+    font-size:11.5px;
+    padding:7px 12px;
+    border-radius:999px;
+    border:2px solid var(--line);
+    background:var(--panel);
+    color:var(--ink-soft);
+    cursor:pointer;
+    transition:border-color .15s ease, color .15s ease, background .15s ease;
+  }
+  .toggle-btn[aria-pressed="true"]{ border-color:var(--success); color:var(--ink); background:var(--panel-2); }
+  .toggle-btn:focus-visible{ outline:2px solid var(--success); outline-offset:2px; }
+
+  /* ---------- game screen ---------- */
+  .game-head{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .stat-pill{
+    flex:1;
+    min-width:80px;
+    background:var(--panel-2);
+    border:2px solid var(--line);
+    border-radius:12px;
+    padding:8px 12px;
+  }
+  .stat-pill .label{ display:block; font-size:10px; color:var(--ink-faint); }
+  .stat-pill .value{ font-family:'Baloo 2', sans-serif; font-weight:600; font-size:15px; color:var(--ink); }
+  .stat-pill.status .value{ color:var(--success); }
+  .stat-pill.status.fail .value{ color:var(--wolf); }
+  .stat-pill.status.success .value{ color:var(--success); }
+  .stat-pill.status.paused .value{ color:var(--ink-faint); }
+
+  .timer-track{
+    width:100%;
+    height:9px;
+    background:var(--panel-2);
+    border:2px solid var(--line);
+    border-radius:999px;
+    overflow:hidden;
+    margin-bottom:14px;
+  }
+  .timer-fill{
+    height:100%;
+    width:100%;
+    background:linear-gradient(90deg, var(--success), var(--sun), var(--wolf));
+    transition:width .05s linear;
+  }
+
+  .arena{
+    position:relative;
+    width:100%;
+    aspect-ratio:16/10;
+    background:
+      radial-gradient(80px 40px at 20% 20%, rgba(255,255,255,0.5), transparent 70%),
+      radial-gradient(60px 30px at 75% 15%, rgba(255,255,255,0.4), transparent 70%),
+      linear-gradient(to bottom, #d8f3a3, #9fd968);
+    border:2px solid var(--line);
+    border-radius:16px;
+    overflow:hidden;
+  }
+  .shape-btn{
+    all:unset;
+    box-sizing:border-box;
+    position:absolute;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transform:translate(-50%, -50%);
+    line-height:1;
+    user-select:none;
+  }
+  .shape-btn:focus-visible{
+    outline:3px solid var(--ink);
+    outline-offset:3px;
+    border-radius:50%;
+  }
+  .shape-btn.flash-good{ filter:drop-shadow(0 0 10px var(--success)); }
+  .shape-btn.flash-bad{ filter:drop-shadow(0 0 10px var(--wolf)); }
+
+  .hint{ font-size:11.5px; color:var(--ink-faint); text-align:center; margin:12px 0 0; }
+
+  .game-controls{
+    display:flex;
+    gap:8px;
+    margin-top:16px;
+  }
+  .ctrl-btn{
+    all:unset;
+    box-sizing:border-box;
+    flex:1;
+    text-align:center;
+    padding:14px 12px;
+    border-radius:999px;
+    border:2px solid var(--line);
+    background:var(--panel);
+    color:var(--ink-soft);
+    font-family:'Baloo 2', ui-rounded, 'SF Pro Rounded', sans-serif;
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+    transition:border-color .15s ease, color .15s ease;
+  }
+  .ctrl-btn:hover{ border-color:var(--ink-soft); color:var(--ink); }
+  .ctrl-btn:focus-visible{ outline:2px solid var(--success); outline-offset:2px; }
+
+  /* ---------- modals (fail / pause) ---------- */
+  .modal-backdrop{
+    position:fixed; inset:0;
+    background:rgba(59,47,34,0.55);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px; z-index:10;
+  }
+  .modal-backdrop[hidden]{ display:none; }
+  .modal{
+    width:100%; max-width:380px;
+    background:var(--panel);
+    border:2px solid var(--line);
+    border-radius:18px;
+    padding:24px;
+  }
+  .modal h2{ font-family:'Baloo 2', sans-serif; font-size:1.25rem; margin:0 0 6px; }
+  #failModal h2{ color:var(--wolf); }
+  #pauseModal h2{ color:var(--ink); }
+  .modal .modal-sub{ color:var(--ink-soft); font-size:12px; margin:0 0 16px; }
+  .modal .fail-stats{ display:flex; gap:8px; margin-bottom:18px; }
+  .modal .fail-stats .stat-pill{ min-width:0; }
+  .modal-actions{ display:flex; flex-direction:column; gap:10px; }
+  .modal-actions .ctrl-btn{ padding:14px; font-size:14px; }
+
+  [hidden]{ display:none !important; }
+
+  .sr-only{
+    position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+    overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation:none !important; transition:none !important; }
+  }
+
+  footer{ margin-top:16px; text-align:center; font-size:10.5px; color:var(--ink-faint); }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🐺 늑대를 찾아라</h1>
+  <p class="subtitle">양 떼 사이에 숨은 늑대 한 마리를 정확히, 빠르게 클릭하세요</p>
+
+  <div class="top-controls">
+    <button class="toggle-btn" id="muteBtn" type="button" aria-pressed="false">🔊 소리 켜짐</button>
+    <button class="toggle-btn" id="motionBtn" type="button" aria-pressed="false">🎬 효과 켜짐</button>
+  </div>
+
+  <!-- ============ 로비 화면 ============ -->
+  <section class="panel" id="lobbyScreen">
+    <p class="rules">
+      <strong>규칙</strong> — 들판에 양들이 나타나고, 그 사이에 <strong>늑대</strong>가 한 마리 숨어 있습니다. 늑대를 클릭(또는 Tab으로 이동 후 Enter)하면 성공하고 다음 라운드로 넘어갑니다. 양을 클릭하거나 제한 시간 안에 늑대를 찾지 못하면 실패합니다.
+    </p>
+
+    <div class="diff-row" role="group" aria-label="난이도 선택">
+      <button class="diff-btn" data-diff="easy" type="button" aria-pressed="false">쉬움</button>
+      <button class="diff-btn" data-diff="normal" type="button" aria-pressed="true">보통</button>
+      <button class="diff-btn" data-diff="hard" type="button" aria-pressed="false">어려움</button>
+    </div>
+
+    <div class="best-table">
+      <div class="best-pill">
+        <span class="label">쉬움 최고</span>
+        <span class="value" id="bestEasy">0</span>
+      </div>
+      <div class="best-pill">
+        <span class="label">보통 최고</span>
+        <span class="value" id="bestNormal">0</span>
+      </div>
+      <div class="best-pill">
+        <span class="label">어려움 최고</span>
+        <span class="value" id="bestHard">0</span>
+      </div>
+    </div>
+
+    <button class="start-btn" id="startBtn" type="button">🐑 시작하기</button>
+  </section>
+
+  <!-- ============ 인게임 화면 ============ -->
+  <section class="panel" id="gameScreen" hidden>
+    <div class="game-head">
+      <div class="stat-pill status" id="statusPill">
+        <span class="label">상태</span>
+        <span class="value" id="statusValue">진행 중</span>
+      </div>
+      <div class="stat-pill">
+        <span class="label">라운드</span>
+        <span class="value" id="roundValue">1</span>
+      </div>
+      <div class="stat-pill">
+        <span class="label">난이도</span>
+        <span class="value" id="diffValue">보통</span>
+      </div>
+    </div>
+
+    <div class="timer-track">
+      <div class="timer-fill" id="timerFill"></div>
+    </div>
+
+    <div class="arena" id="arena" aria-label="늑대를 찾아 클릭하세요"></div>
+
+    <p class="hint">늑대만 클릭 · Tab으로 이동, Enter로 선택 가능</p>
+
+    <div class="game-controls">
+      <button class="ctrl-btn" id="lobbyBtn" type="button">← 로비로</button>
+      <button class="ctrl-btn" id="retryBtn" type="button">↺ 다시 시작</button>
+    </div>
+  </section>
+
+  <footer>최고 기록은 난이도별로 이 브라우저에 저장됩니다</footer>
+
+  <div aria-live="polite" class="sr-only" id="srStatus"></div>
+</div>
+
+<!-- ============ 실패 모달 ============ -->
+<div class="modal-backdrop" id="failModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="failTitle">
+    <h2 id="failTitle">🐑 놓쳤어요</h2>
+    <p class="modal-sub" id="failReason">양을 클릭했습니다.</p>
+    <div class="fail-stats">
+      <div class="stat-pill"><span class="label">도달 라운드</span><span class="value" id="failRound">1</span></div>
+      <div class="stat-pill"><span class="label">난이도</span><span class="value" id="failDiff">보통</span></div>
+    </div>
+    <div class="modal-actions">
+      <button class="ctrl-btn" id="failLobbyBtn" type="button">← 로비로</button>
+      <button class="start-btn" id="failRetryBtn" type="button">↺ 다시 시작</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 일시정지 모달 ============ -->
+<div class="modal-backdrop" id="pauseModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
+    <h2 id="pauseTitle">⏸ 일시정지됨</h2>
+    <p class="modal-sub">다른 화면을 보는 동안 게임이 멈췄습니다. 이어서 하려면 아래 버튼을 눌러주세요.</p>
+    <div class="modal-actions">
+      <button class="ctrl-btn" id="pauseLobbyBtn" type="button">← 로비로</button>
+      <button class="start-btn" id="resumeBtn" type="button">▶ 계속하기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ── 난이도 프리셋 — targetSize(늑대 크기)가 카드 3의 조정 대상 값입니다 ─────────────
+  // 10회 전/후 플레이 데이터를 비교할 때는 이 중 하나(보통은 normal.targetSize)만 바꾸세요.
+  var DIFFICULTY_PRESETS = {
+    easy:   { label:'쉬움',   targetSize:60, timeLimit:3400, shapeCount:5 },
+    normal: { label:'보통',   targetSize:44, timeLimit:2500, shapeCount:8 }, // ← 조정 대상: targetSize
+    hard:   { label:'어려움', targetSize:32, timeLimit:1800, shapeCount:11 }
+  };
+
+  var STORAGE_BEST = 'wolfhunt_best_v1';
+  var STORAGE_PREFS = 'wolfhunt_prefs_v1';
+
+  // ── 저장/복구 ─────────────
+  function loadBest(){
+    var defaults = { easy:0, normal:0, hard:0 };
+    try{
+      var raw = localStorage.getItem(STORAGE_BEST);
+      if(!raw) return defaults;
+      var p = JSON.parse(raw);
+      return {
+        easy: Number.isFinite(p.easy) ? p.easy : 0,
+        normal: Number.isFinite(p.normal) ? p.normal : 0,
+        hard: Number.isFinite(p.hard) ? p.hard : 0
+      };
+    }catch(e){ return defaults; }
+  }
+  function saveBest(best){ try{ localStorage.setItem(STORAGE_BEST, JSON.stringify(best)); }catch(e){} }
+
+  function loadPrefs(){
+    var defaults = {
+      muted:false,
+      reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+      difficulty:'normal'
+    };
+    try{
+      var raw = localStorage.getItem(STORAGE_PREFS);
+      if(!raw) return defaults;
+      var p = JSON.parse(raw);
+      return {
+        muted: typeof p.muted === 'boolean' ? p.muted : defaults.muted,
+        reducedMotion: typeof p.reducedMotion === 'boolean' ? p.reducedMotion : defaults.reducedMotion,
+        difficulty: DIFFICULTY_PRESETS[p.difficulty] ? p.difficulty : defaults.difficulty
+      };
+    }catch(e){ return defaults; }
+  }
+  function savePrefs(prefs){ try{ localStorage.setItem(STORAGE_PREFS, JSON.stringify(prefs)); }catch(e){} }
+
+  var best = loadBest();
+  var prefs = loadPrefs();
+
+  var state = {
+    screen:'lobby',
+    status:'idle', // idle | playing | paused | fail
+    difficulty: prefs.difficulty,
+    round:1,
+    timeLimit:0,
+    deadline:0,
+    pausedRemaining:0,
+    timerId:null
+  };
+
+  var $ = function(id){ return document.getElementById(id); };
+  var lobbyScreen = $('lobbyScreen');
+  var gameScreen = $('gameScreen');
+  var diffBtns = Array.prototype.slice.call(document.querySelectorAll('.diff-btn'));
+  var startBtn = $('startBtn');
+  var bestEasy = $('bestEasy');
+  var bestNormal = $('bestNormal');
+  var bestHard = $('bestHard');
+  var statusPill = $('statusPill');
+  var statusValue = $('statusValue');
+  var roundValue = $('roundValue');
+  var diffValue = $('diffValue');
+  var timerFill = $('timerFill');
+  var arena = $('arena');
+  var lobbyBtn = $('lobbyBtn');
+  var retryBtn = $('retryBtn');
+  var muteBtn = $('muteBtn');
+  var motionBtn = $('motionBtn');
+  var failModal = $('failModal');
+  var failReason = $('failReason');
+  var failRound = $('failRound');
+  var failDiff = $('failDiff');
+  var failLobbyBtn = $('failLobbyBtn');
+  var failRetryBtn = $('failRetryBtn');
+  var pauseModal = $('pauseModal');
+  var pauseLobbyBtn = $('pauseLobbyBtn');
+  var resumeBtn = $('resumeBtn');
+  var srStatus = $('srStatus');
+
+  function announce(msg){ srStatus.textContent = msg; }
+
+  // ── 사운드 ─────────────
+  var audioCtx = null;
+  function playTone(freq, type){
+    if(prefs.muted) return;
+    try{
+      if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = type || 'square';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.18);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.18);
+    }catch(e){}
+  }
+
+  // ── 화면 전환 ─────────────
+  function showLobby(){
+    state.screen = 'lobby';
+    state.status = 'idle';
+    stopTimer();
+    lobbyScreen.hidden = false;
+    gameScreen.hidden = true;
+    failModal.hidden = true;
+    pauseModal.hidden = true;
+    renderLobby();
+  }
+  function showGame(){
+    state.screen = 'game';
+    lobbyScreen.hidden = true;
+    gameScreen.hidden = false;
+  }
+
+  function renderLobby(){
+    diffBtns.forEach(function(btn){
+      btn.setAttribute('aria-pressed', String(btn.dataset.diff === state.difficulty));
+    });
+    bestEasy.textContent = best.easy;
+    bestNormal.textContent = best.normal;
+    bestHard.textContent = best.hard;
+  }
+
+  diffBtns.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      state.difficulty = btn.dataset.diff;
+      prefs.difficulty = state.difficulty;
+      savePrefs(prefs);
+      renderLobby();
+    });
+  });
+
+  startBtn.addEventListener('click', function(){ startRun(); });
+
+  function startRun(){
+    state.round = 1;
+    showGame();
+    diffValue.textContent = DIFFICULTY_PRESETS[state.difficulty].label;
+    startRound();
+  }
+
+  function startRound(){
+    var preset = DIFFICULTY_PRESETS[state.difficulty];
+    state.status = 'playing';
+    state.timeLimit = preset.timeLimit;
+    roundValue.textContent = state.round;
+    statusValue.textContent = '진행 중';
+    statusPill.classList.remove('fail','success','paused');
+    announce('라운드 ' + state.round + ' 시작');
+    buildArena(preset);
+    startTimer(preset.timeLimit);
+  }
+
+  // ── 타이머 (deadline 기반: 일시정지·재개를 명확히 다루기 위함) ─────────────
+  function startTimer(remaining){
+    stopTimer();
+    state.deadline = performance.now() + remaining;
+    tickTimer();
+  }
+  function tickTimer(){
+    function tick(now){
+      var remaining = state.deadline - now;
+      var pct = Math.max(0, Math.min(100, remaining / state.timeLimit * 100));
+      timerFill.style.width = pct + '%';
+      if(remaining <= 0){
+        onFail('시간 안에 늑대를 찾지 못했습니다.');
+        return;
+      }
+      state.timerId = requestAnimationFrame(tick);
+    }
+    state.timerId = requestAnimationFrame(tick);
+  }
+  function stopTimer(){
+    if(state.timerId){ cancelAnimationFrame(state.timerId); state.timerId = null; }
+  }
+
+  // ── 동물 얼굴 SVG (늑대와 같은 스타일의 정면 얼굴로 통일) ─────────────
+  function svgWolfFace(){
+    return '<svg viewBox="0 0 100 100">' +
+      '<polygon points="16,8 34,36 8,32" fill="#57505c"/>' +
+      '<polygon points="84,8 92,32 66,36" fill="#57505c"/>' +
+      '<circle cx="50" cy="54" r="38" fill="#7c7683"/>' +
+      '<ellipse cx="50" cy="68" rx="21" ry="16" fill="#d3cfd6"/>' +
+      '<circle cx="34" cy="48" r="7.5" fill="#fff"/><circle cx="35" cy="48" r="3.6" fill="#1a1a1a"/>' +
+      '<circle cx="66" cy="48" r="7.5" fill="#fff"/><circle cx="65" cy="48" r="3.6" fill="#1a1a1a"/>' +
+      '<circle cx="50" cy="66" r="5.5" fill="#20181c"/>' +
+      '<path d="M40 78 Q50 84 60 78" stroke="#2a2228" stroke-width="2.5" fill="none" stroke-linecap="round"/>' +
+      '</svg>';
+  }
+  function svgSheepFace(){
+    return '<svg viewBox="0 0 100 100">' +
+      '<g fill="#f7f3ea">' +
+        '<circle cx="24" cy="30" r="15"/>' +
+        '<circle cx="50" cy="15" r="17"/>' +
+        '<circle cx="76" cy="30" r="15"/>' +
+        '<circle cx="14" cy="56" r="15"/>' +
+        '<circle cx="86" cy="56" r="15"/>' +
+        '<circle cx="50" cy="82" r="19"/>' +
+        '<circle cx="50" cy="50" r="33"/>' +
+      '</g>' +
+      '<ellipse cx="27" cy="47" rx="8.5" ry="12.5" fill="#e6cfa8"/>' +
+      '<ellipse cx="73" cy="47" rx="8.5" ry="12.5" fill="#e6cfa8"/>' +
+      '<ellipse cx="50" cy="58" rx="23" ry="19" fill="#fdfaf3"/>' +
+      '<circle cx="41" cy="55" r="5" fill="#1a1a1a"/>' +
+      '<circle cx="59" cy="55" r="5" fill="#1a1a1a"/>' +
+      '<ellipse cx="50" cy="67" rx="6" ry="4" fill="#2b2b2b"/>' +
+      '<path d="M43 74 Q50 78 57 74" stroke="#4a4238" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+      '</svg>';
+  }
+
+  // ── 동물 배치 ─────────────
+  function buildArena(preset){
+    arena.innerHTML = '';
+    var rect = arena.getBoundingClientRect();
+    var w = rect.width, h = rect.height;
+    var targetSize = preset.targetSize;
+    var placed = [];
+
+    function tryPlace(size){
+      for(var attempt=0; attempt<40; attempt++){
+        var x = size/2 + Math.random() * (w - size);
+        var y = size/2 + Math.random() * (h - size);
+        var ok = true;
+        for(var i=0;i<placed.length;i++){
+          var dx = placed[i].x - x, dy = placed[i].y - y;
+          var minDist = (placed[i].size + size) / 2 + 6;
+          if(Math.sqrt(dx*dx+dy*dy) < minDist){ ok = false; break; }
+        }
+        if(ok) return { x:x, y:y };
+      }
+      return { x: size/2 + Math.random()*(w-size), y: size/2 + Math.random()*(h-size) };
+    }
+
+    // 위치는 %로 저장합니다 — 창 크기가 바뀌어 아레나가 커지거나 작아져도
+    // 아이콘이 화면 밖으로 나가거나 잘못된 자리에 남지 않도록 하기 위함입니다.
+    function makeAnimal(kind, size, pos, isTarget){
+      var btn = document.createElement('button');
+      btn.className = 'shape-btn';
+      btn.type = 'button';
+      btn.setAttribute('aria-label', isTarget ? '늑대 (정답)' : '양 (오답)');
+      btn.style.left = (pos.x / w * 100) + '%';
+      btn.style.top = (pos.y / h * 100) + '%';
+      btn.style.width = size + 'px';
+      btn.style.height = size + 'px';
+      btn.innerHTML = kind === 'wolf' ? svgWolfFace() : svgSheepFace();
+      btn.addEventListener('click', function(){ onHit(isTarget, btn); });
+      arena.appendChild(btn);
+      return btn;
+    }
+
+    var targetPos = tryPlace(targetSize);
+    placed.push({ x:targetPos.x, y:targetPos.y, size:targetSize });
+    makeAnimal('wolf', targetSize, targetPos, true);
+
+    for(var i=0;i<preset.shapeCount;i++){
+      var size = targetSize * (0.85 + Math.random()*0.35);
+      var pos = tryPlace(size);
+      placed.push({ x:pos.x, y:pos.y, size:size });
+      makeAnimal('sheep', size, pos, false);
+    }
+  }
+
+  // ── 결과 처리 ─────────────
+  function onHit(correct, el){
+    if(state.status !== 'playing') return;
+    if(correct){
+      stopTimer();
+      state.status = 'idle';
+      playTone(1000, 'square');
+      flashShape(el, true);
+      statusValue.textContent = '성공';
+      statusPill.classList.add('success');
+      announce('라운드 ' + state.round + ' 성공');
+      updateBestIfNeeded(state.round);
+      setTimeout(function(){
+        state.round += 1;
+        startRound();
+      }, prefs.reducedMotion ? 120 : 380);
+    }else{
+      playTone(160, 'sawtooth');
+      flashShape(el, false);
+      onFail('양을 클릭했습니다.');
+    }
+  }
+
+  function flashShape(el, good){
+    if(prefs.reducedMotion) return;
+    el.classList.add(good ? 'flash-good' : 'flash-bad');
+    setTimeout(function(){ el.classList.remove('flash-good','flash-bad'); }, 300);
+  }
+
+  function updateBestIfNeeded(roundReached){
+    var key = state.difficulty;
+    if(roundReached > best[key]){
+      best[key] = roundReached;
+      saveBest(best);
+    }
+  }
+
+  function onFail(reason){
+    stopTimer();
+    state.status = 'fail';
+    statusValue.textContent = '실패';
+    statusPill.classList.add('fail');
+    updateBestIfNeeded(state.round - 1 >= 0 ? state.round - 1 : 0);
+    announce('실패: ' + reason + ' 도달 라운드 ' + state.round);
+    failReason.textContent = reason;
+    failRound.textContent = state.round;
+    failDiff.textContent = DIFFICULTY_PRESETS[state.difficulty].label;
+    failModal.hidden = false;
+    failRetryBtn.focus();
+  }
+
+  // ── 일시정지 / 재개 (탭 이탈 시 자동 정지, 복귀 시에는 버튼을 눌러야 재개) ─────────────
+  function pauseGame(){
+    if(state.status !== 'playing') return;
+    var remaining = Math.max(0, state.deadline - performance.now());
+    state.pausedRemaining = remaining;
+    state.status = 'paused';
+    stopTimer();
+    statusValue.textContent = '일시정지';
+    statusPill.classList.add('paused');
+    announce('일시정지되었습니다');
+    pauseModal.hidden = false;
+  }
+  function resumeGame(){
+    if(state.status !== 'paused') return;
+    state.status = 'playing';
+    statusPill.classList.remove('paused');
+    statusValue.textContent = '진행 중';
+    pauseModal.hidden = true;
+    announce('다시 시작합니다');
+    startTimer(state.pausedRemaining);
+    var wolf = arena.querySelector('[aria-label^="늑대"]');
+    if(wolf) wolf.focus();
+  }
+
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden && state.status === 'playing'){
+      pauseGame();
+    }
+    // 탭으로 돌아와도 자동 재개하지 않습니다. 사용자가 "계속하기"를 눌러야 다시 시작됩니다.
+  });
+
+  resumeBtn.addEventListener('click', resumeGame);
+  pauseLobbyBtn.addEventListener('click', showLobby);
+
+  // ── 컨트롤 ─────────────
+  lobbyBtn.addEventListener('click', showLobby);
+  retryBtn.addEventListener('click', startRun);
+  failLobbyBtn.addEventListener('click', showLobby);
+  failRetryBtn.addEventListener('click', function(){
+    failModal.hidden = true;
+    startRun();
+  });
+
+  muteBtn.addEventListener('click', function(){
+    prefs.muted = !prefs.muted;
+    muteBtn.setAttribute('aria-pressed', String(prefs.muted));
+    muteBtn.textContent = prefs.muted ? '🔇 소리 꺼짐' : '🔊 소리 켜짐';
+    savePrefs(prefs);
+  });
+  motionBtn.addEventListener('click', function(){
+    prefs.reducedMotion = !prefs.reducedMotion;
+    motionBtn.setAttribute('aria-pressed', String(prefs.reducedMotion));
+    motionBtn.textContent = prefs.reducedMotion ? '🎬 효과 줄임' : '🎬 효과 켜짐';
+    savePrefs(prefs);
+  });
+
+  // ── 초기화 ─────────────
+  muteBtn.setAttribute('aria-pressed', String(prefs.muted));
+  muteBtn.textContent = prefs.muted ? '🔇 소리 꺼짐' : '🔊 소리 켜짐';
+  motionBtn.setAttribute('aria-pressed', String(prefs.reducedMotion));
+  motionBtn.textContent = prefs.reducedMotion ? '🎬 효과 줄임' : '🎬 효과 켜짐';
+
+  showLobby();
+})();
+</script>
+</body>
+</html>
