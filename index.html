@@ -725,7 +725,7 @@
     state.status = 'fail';
     statusValue.textContent = '실패';
     statusPill.classList.add('fail');
-    updateBestIfNeeded(state.round - 1 >= 0 ? state.round - 1 : 0);
+    updateBestIfNeeded(state.round);
     announce('실패: ' + reason + ' 도달 라운드 ' + state.round);
     failReason.textContent = reason;
     failRound.textContent = state.round;
