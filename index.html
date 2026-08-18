@@ -550,16 +550,28 @@
     startRound();
   }
 
+  // ── 라운드 진행에 따른 제한시간 감소 ─────────────
+  // 난이도와 무관하게 10라운드마다 제한시간이 15%씩 줄어듭니다 (최소 시간 보장).
+  var ROUND_TIER_SIZE = 10;
+  var TIME_DECAY_PER_TIER = 0.85;
+  var MIN_TIME_LIMIT = 700; // ms
+
+  function effectiveTimeLimit(baseLimit, round){
+    var tier = Math.floor((round - 1) / ROUND_TIER_SIZE);
+    var scaled = baseLimit * Math.pow(TIME_DECAY_PER_TIER, tier);
+    return Math.max(MIN_TIME_LIMIT, Math.round(scaled));
+  }
+
   function startRound(){
     var preset = DIFFICULTY_PRESETS[state.difficulty];
     state.status = 'playing';
-    state.timeLimit = preset.timeLimit;
+    state.timeLimit = effectiveTimeLimit(preset.timeLimit, state.round);
     roundValue.textContent = state.round;
     statusValue.textContent = '진행 중';
     statusPill.classList.remove('fail','success','paused');
     announce('라운드 ' + state.round + ' 시작');
     buildArena(preset);
-    startTimer(preset.timeLimit);
+    startTimer(state.timeLimit);
   }
 
   // ── 타이머 (deadline 기반: 일시정지·재개를 명확히 다루기 위함) ─────────────
