@@ -662,7 +662,7 @@
     { count:1, dmg:4.8, interval:1240, splash:0 },
     { count:2, dmg:5.2, interval:1240, splash:30 },
     { count:2, dmg:6.4, interval:1120, splash:36 },
-    { count:3, dmg:7.6, interval:1000, splash:42 }
+    { count:2, dmg:7.6, interval:1000, splash:42 }
   ];
 
   // ---------- 게임 변수 ----------
@@ -833,6 +833,19 @@
     return pool[Math.floor(Math.random()*pool.length)];
   }
 
+  function pickSpawnEntry(minX, maxX){
+    // 스폰 지점 결정: 55% 확률로 기존처럼 상단에서, 나머지는 좌/우측(화면 중앙보다 위쪽 범위)에서 등장
+    var roll = Math.random();
+    if(roll < 0.55){
+      return { x: minX + Math.random()*(maxX-minX), y: -20, entryX: null };
+    }
+    var fromLeft = roll < 0.775;
+    var sx = fromLeft ? -30 : W + 30;
+    var sy = 20 + Math.random() * (H/2 - 40); // 화면 세로 중앙보다 위쪽에서만 등장
+    var tx = minX + Math.random()*(maxX-minX); // 화면 안쪽으로 진입할 목표 x
+    return { x: sx, y: sy, entryX: tx };
+  }
+
   function spawnNormal(){
     var kind = pickGruntType();
 
@@ -840,8 +853,9 @@
       // 속사형: 일반형과 비슷한 크기, 이동이 빠르며, 일정 시간마다 3점사를 발사함.
       var rHp = 2 + Math.floor(round/3);
       var rFireInterval = Math.max(900, 1600 - round*40); // 3점사 사이의 간격
+      var rSp = pickSpawnEntry(30, W-30);
       enemies.push({
-        type:"rush", x: 30 + Math.random()*(W-60), y: -20, r: 13,
+        type:"rush", x: rSp.x, y: rSp.y, entryTargetX: rSp.entryX, r: 13,
         hp: rHp, maxHp: rHp, speed: 100 + round*3,
         patrolY: 80 + Math.random()*180, fireTimer: 700+Math.random()*400, fireInterval: rFireInterval,
         bulletSpeed: 150 + round*3,
@@ -854,8 +868,9 @@
     if(kind === "tank"){
       // 탱커형: 체력 높고 느리지만 화면에 오래 남아 묵직한 탄막을 자주 뿌림.
       var tHp = 7 + round*2;
+      var tSp = pickSpawnEntry(50, W-50);
       enemies.push({
-        type:"tank", x: 50 + Math.random()*(W-100), y: -25, r: 22,
+        type:"tank", x: tSp.x, y: tSp.y, entryTargetX: tSp.entryX, r: 22,
         hp: tHp, maxHp: tHp, speed: 20 + round*0.6,
         patrolY: 100 + Math.random()*90, fireTimer: 1000+Math.random()*400,
         fireInterval: Math.max(700, 1400 - (round-1)*30),
@@ -873,8 +888,9 @@
     var burstSpread = burstCount > 1 ? 0.22 : 0;
     var bulletSpeed = 95 + (round-1)*7;
     var fireInterval = Math.max(650, 2000 - (round-1)*140);
+    var nSp = pickSpawnEntry(40, W-40);
     enemies.push({
-      type:"normal", x: 40 + Math.random()*(W-80), y: -20, r: 13,
+      type:"normal", x: nSp.x, y: nSp.y, entryTargetX: nSp.entryX, r: 13,
       hp: hp, maxHp: hp, speed: 45 + round*1.5,
       patrolY: 90 + Math.random()*160, fireTimer: 1200+Math.random()*700, fireInterval: fireInterval,
       burstCount: burstCount, burstSpread: burstSpread, bulletSpeed: bulletSpeed,
@@ -884,8 +900,9 @@
   }
   function spawnElite(){
     var hp = 10 + round*3;
+    var eSp = pickSpawnEntry(60, W-60);
     enemies.push({
-      type:"elite", x: 60 + Math.random()*(W-120), y: -30, r: 20,
+      type:"elite", x: eSp.x, y: eSp.y, entryTargetX: eSp.entryX, r: 20,
       hp: hp, maxHp: hp, speed: 55 + round*1.5,
       patrolY: 110 + Math.random()*100, fireTimer: 1300, fireInterval: 1500,
       oscAmp: 60, oscFreq: 450,
@@ -1207,8 +1224,18 @@
     for(var i=0;i<allEnemies.length;i++){
       var e = allEnemies[i];
       e.age += dt*1000;
-      if(e.y < e.patrolY){
-        e.y += e.speed*dt;
+      if(!e.entered){
+        // 목표 진입 지점(상단 스폰은 제자리 하강, 좌/우측 스폰은 화면 안쪽으로 대각 이동)까지 이동
+        var etx = (e.entryTargetX != null) ? e.entryTargetX : e.x;
+        var ety = e.patrolY;
+        var edx = etx - e.x, edy = ety - e.y;
+        var edist = Math.sqrt(edx*edx + edy*edy);
+        if(edist < 6){
+          e.x = etx; e.y = ety; e.entered = true;
+        }else{
+          e.x += (edx/edist) * e.speed * dt;
+          e.y += (edy/edist) * e.speed * dt;
+        }
       }else{
         e.x += Math.sin(e.age/(e.oscFreq||500) + e.phase) * (e.oscAmp||50) * dt;
         e.x = Math.max(e.r+4, Math.min(W-e.r-4, e.x));
