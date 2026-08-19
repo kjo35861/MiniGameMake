@@ -145,6 +145,7 @@
     backdrop-filter: blur(2px);
   }
   .overlay.hidden{ display:none; }
+  .hidden{ display:none !important; }
   .overlay h2{
     font-family:'Press Start 2P', monospace;
     font-size: clamp(14px, 2.6vw, 20px);
@@ -161,37 +162,76 @@
   .lobby-stat{ font-size:12.5px; color: var(--ink-dim); }
   .lobby-stat b{ color: var(--amber); margin-left:4px; }
   .lobby-rules{
-    list-style:none; margin:4px 0 0; padding:0; text-align:left;
-    max-width: 460px; color: var(--ink-dim); font-size:12px; line-height:1.9;
+    list-style:none; margin:0; padding:0; text-align:left;
+    max-width: 300px; color: var(--ink-dim); font-size:11.5px; line-height:1.8;
   }
   .lobby-rules li{ padding-left:16px; position:relative; }
   .lobby-rules li::before{ content:"▸"; position:absolute; left:0; color: var(--cyan-dim); }
-  .lobby-actions{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:6px; }
+  .lobby-actions{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; align-items:center; margin-top:14px; }
 
-  .char-select{ margin: 6px 0 4px; }
-  .char-select-label{ font-size:10.5px; color: var(--ink-dim); letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px; }
-  .char-cards{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
-  .char-card{
+  /* 캐릭터 캐러셀 (< 캐릭터 >) */
+  .char-carousel{
+    display:flex; align-items:center; justify-content:center; gap:16px;
+    margin: 10px 0 8px;
+  }
+  .carousel-arrow{
     font-family:'JetBrains Mono', monospace;
-    width: 168px;
+    width:36px; height:44px;
     background: rgba(20,24,38,0.7);
     border: 1px solid var(--panel-border);
-    border-radius: 10px;
-    padding: 12px 10px;
-    cursor: pointer;
-    text-align: center;
+    border-radius: 8px;
     color: var(--ink);
-    transition: border-color .15s, box-shadow .15s, opacity .15s;
+    font-size:18px;
+    cursor: pointer;
+    flex-shrink:0;
   }
-  .char-card:hover:not(.locked){ border-color: var(--cyan-dim); }
-  .char-card.active{ border-color: var(--cyan); box-shadow: 0 0 10px rgba(127,212,204,0.18) inset; }
-  .char-card .char-icon{ font-size:22px; line-height:1; margin-bottom:6px; }
-  .char-icon-default{ color: var(--cyan); text-shadow: 0 0 6px rgba(127,212,204,0.5); }
-  .char-icon-laser{ color: var(--violet); text-shadow: 0 0 6px rgba(172,155,214,0.5); }
-  .char-card .char-name{ font-size:12px; font-weight:700; margin-bottom:4px; }
-  .char-card .char-desc{ font-size:10px; color: var(--ink-dim); line-height:1.5; }
-  .char-card.locked{ opacity:.45; cursor: not-allowed; }
-  .char-card.locked .char-icon{ color: var(--ink-dim); text-shadow:none; }
+  .carousel-arrow:hover{ border-color: var(--cyan-dim); color: var(--cyan); }
+  .char-display{
+    position:relative;
+    width: 220px;
+    background: rgba(20,24,38,0.7);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 18px 14px;
+    text-align:center;
+  }
+  .char-icon-big{ font-size:34px; line-height:1; margin-bottom:8px; }
+  .char-name-big{ font-size:14px; font-weight:700; margin-bottom:6px; }
+  .char-desc-big{ font-size:11px; color: var(--ink-dim); line-height:1.6; }
+  .char-lock-badge{
+    position:absolute; top:8px; right:10px; font-size:14px;
+  }
+  .char-display.locked .char-icon-big{ color: var(--ink-dim) !important; text-shadow:none !important; }
+  .char-dots{ display:flex; gap:6px; justify-content:center; margin-bottom:4px; }
+  .char-dot{
+    width:6px; height:6px; border-radius:50%;
+    background: var(--panel-border);
+  }
+  .char-dot.active{ background: var(--cyan); }
+
+  /* ? 도움말 호버 툴팁 */
+  .help-wrap{ position:relative; display:inline-block; }
+  .help-btn{
+    width:36px; height:36px; padding:0;
+    border-radius:50%;
+    font-weight:700; font-size:14px;
+  }
+  .help-tooltip{
+    display:none;
+    position:absolute; bottom:calc(100% + 10px); left:50%; transform:translateX(-50%);
+    width: 300px;
+    background: rgba(15,18,28,0.98);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    z-index: 20;
+  }
+  .help-wrap:hover .help-tooltip,
+  .help-wrap:focus-within .help-tooltip,
+  .help-wrap.open .help-tooltip{
+    display:block;
+  }
   .debug-only{ display:none !important; }
   body.debug-mode .debug-only{ display:inline-flex !important; }
   .lobby-actions.debug-mode-flex{ display:flex; }
@@ -289,33 +329,36 @@
       <h2>로비</h2>
       <div class="lobby-stat">최고 기록 <b id="lobbyBest">0</b></div>
 
-      <div class="char-select">
-        <div class="char-select-label">캐릭터 선택</div>
-        <div class="char-cards">
-          <button type="button" class="char-card" id="charCardDefault" data-char="default">
-            <div class="char-icon char-icon-default">▲</div>
-            <div class="char-name">인터셉터</div>
-            <div class="char-desc">확산탄 — 무기 강화 시 탄이 여러 갈래로 갈라짐</div>
-          </button>
-          <button type="button" class="char-card locked" id="charCardLaser" data-char="laser" disabled>
-            <div class="char-icon char-icon-laser">⚡</div>
-            <div class="char-name">레이저 발키리</div>
-            <div class="char-desc" id="laserCharDesc">🔒 10라운드 클리어 시 해금</div>
-          </button>
+      <div class="char-carousel">
+        <button type="button" class="carousel-arrow" id="charPrev" aria-label="이전 캐릭터">&lt;</button>
+        <div class="char-display" id="charDisplay">
+          <div class="char-lock-badge hidden" id="charLockBadge">🔒</div>
+          <div class="char-icon-big" id="charIconBig">▲</div>
+          <div class="char-name-big" id="charNameBig">인터셉터</div>
+          <div class="char-desc-big" id="charDescBig">확산탄 — 무기 강화 시 탄이 여러 갈래로 갈라짐</div>
         </div>
+        <button type="button" class="carousel-arrow" id="charNext" aria-label="다음 캐릭터">&gt;</button>
+      </div>
+      <div class="char-dots" id="charDots">
+        <span class="char-dot active"></span><span class="char-dot"></span><span class="char-dot"></span>
       </div>
 
-      <ul class="lobby-rules">
-        <li><kbd>방향키</kbd>/<kbd>WASD</kbd> 이동 (모바일은 화면을 손가락으로 드래그) — 공격은 자동</li>
-        <li>일반 몬스터 처치로 진행률 상승, 진행률 50%에서 엘리트 1마리 등장</li>
-        <li>2라운드부터 빠른 속사형, 4라운드부터 묵직한 탱커형 몬스터가 섞여서 등장</li>
-        <li>몬스터를 처치하면 확률로 💣 폭탄 아이템이 떨어짐 — 닿으면 화면의 적 탄을 전부 제거</li>
-        <li>엘리트 처치 시 무기 강화(최대 Lv.5), 무기가 이미 최대라면 대신 체력 1 회복</li>
-        <li>진행률 100%에서 보스 등장 → 처치 시 다음 라운드로 진행</li>
-        <li>하트 3개를 모두 잃으면 실패, 10라운드 최종 보스를 처치하면 클리어 (레이저 발키리 캐릭터 해금)</li>
-      </ul>
       <div class="lobby-actions">
         <button class="primary" id="btnStart">게임 시작 (Enter)</button>
+        <div class="help-wrap">
+          <button type="button" class="help-btn" id="btnHelp" aria-label="도움말">?</button>
+          <div class="help-tooltip" id="helpTooltip">
+            <ul class="lobby-rules">
+              <li><kbd>방향키</kbd>/<kbd>WASD</kbd> 이동 (모바일은 화면을 손가락으로 드래그) — 공격은 자동</li>
+              <li>일반 몬스터 처치로 진행률 상승, 진행률 50%에서 엘리트 1마리 등장</li>
+              <li>2라운드부터 빠른 속사형, 4라운드부터 묵직한 탱커형 몬스터가 섞여서 등장</li>
+              <li>몬스터를 처치하면 확률로 💣 폭탄 아이템이 떨어짐 — 닿으면 화면의 적 탄을 전부 제거</li>
+              <li>엘리트 처치 시 무기 강화(최대 Lv.5), 무기가 이미 최대라면 대신 체력 1 회복</li>
+              <li>진행률 100%에서 보스 등장 → 처치 시 다음 라운드로 진행</li>
+              <li>하트를 모두 잃으면 실패, 10라운드 최종 보스를 처치하면 클리어</li>
+            </ul>
+          </div>
+        </div>
         <button class="debug-only" id="btnJumpRound10Lobby">⏭ 10라운드로 바로가기 (무기 최대)</button>
       </div>
     </div>
@@ -386,19 +429,21 @@
 
   // ---------- 저장 데이터 (최고 기록·캐릭터 해금/선택 보존) ----------
   var STORAGE_KEY = "neonward_wave_save_v1";
-  function defaultSave(){ return { best: 0, muted: false, reduced: false, selectedChar: "default", laserUnlocked: false }; }
+  function defaultSave(){ return { best: 0, muted: false, reduced: false, selectedChar: "default", laserUnlocked: false, drifterUnlocked: false, bombsCollected: 0 }; }
   function loadSave(){
     try{
       var raw = localStorage.getItem(STORAGE_KEY);
       if(!raw) return defaultSave();
       var parsed = JSON.parse(raw);
       if(!parsed || typeof parsed !== "object") return defaultSave();
-      var selectedChar = (parsed.selectedChar === "laser") ? "laser" : "default";
+      var selectedChar = (parsed.selectedChar === "laser" || parsed.selectedChar === "drifter") ? parsed.selectedChar : "default";
       return {
         best: (typeof parsed.best === "number" && isFinite(parsed.best) && parsed.best >= 0) ? parsed.best : 0,
         muted: !!parsed.muted,
         reduced: !!parsed.reduced,
         laserUnlocked: !!parsed.laserUnlocked,
+        drifterUnlocked: !!parsed.drifterUnlocked,
+        bombsCollected: (typeof parsed.bombsCollected === "number" && isFinite(parsed.bombsCollected) && parsed.bombsCollected >= 0) ? parsed.bombsCollected : 0,
         selectedChar: selectedChar
       };
     }catch(e){ return defaultSave(); }
@@ -407,15 +452,18 @@
     try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(save)); }catch(e){}
   }
   var save = loadSave();
-  // 저장값이 손상돼 selectedChar가 laser인데 해금 기록이 없다면 안전하게 default로 되돌림
+  // 저장값이 손상돼 선택된 캐릭터가 아직 해금되지 않은 상태라면 안전하게 default로 되돌림
   if(save.selectedChar === "laser" && !save.laserUnlocked){ save.selectedChar = "default"; }
+  if(save.selectedChar === "drifter" && !save.drifterUnlocked){ save.selectedChar = "default"; }
 
   // ---------- 난이도 상수 (테스트용) ----------
   var NORMAL_SPAWN_INTERVAL_MS = 1700; // 1라운드 기준값 (라운드마다 감소)
   var MIN_SPAWN_INTERVAL_MS = 550;     // 스폰 간격 하한
   var ROUND_DURATION_MS = 40000;      // 진행률 100%까지 걸리는 시간
   var ELITE_THRESHOLDS = [50]; // 진행률 %, 라운드당 1마리만 등장
-  var MAX_HEARTS = 3;
+  var MAX_HEARTS = 3;          // 기본/레이저 캐릭터 최대 체력
+  var DRIFTER_MAX_HEARTS = 2;  // 드리프터 캐릭터 최대 체력 (고화력 대신 저체력)
+  var DRIFTER_UNLOCK_BOMBS = 15; // 드리프터 해금에 필요한 폭탄 아이템 누적 획득 수
   var INVULN_MS = 1000;
   var MAX_ROUND = 10; // 10라운드가 최종 라운드 (최종 보스 등장)
 
@@ -467,9 +515,16 @@
   var btnJumpRound10Lobby = document.getElementById("btnJumpRound10Lobby");
   var lobbyBest = document.getElementById("lobbyBest");
   var btnPause = document.getElementById("btnPause");
-  var charCardDefault = document.getElementById("charCardDefault");
-  var charCardLaser = document.getElementById("charCardLaser");
-  var laserCharDesc = document.getElementById("laserCharDesc");
+  var charPrev = document.getElementById("charPrev");
+  var charNext = document.getElementById("charNext");
+  var charDisplay = document.getElementById("charDisplay");
+  var charIconBig = document.getElementById("charIconBig");
+  var charNameBig = document.getElementById("charNameBig");
+  var charDescBig = document.getElementById("charDescBig");
+  var charLockBadge = document.getElementById("charLockBadge");
+  var charDots = document.querySelectorAll("#charDots .char-dot");
+  var btnHelp = document.getElementById("btnHelp");
+  var helpWrap = btnHelp ? btnHelp.parentElement : null;
 
   document.getElementById("diffSpawn").textContent = NORMAL_SPAWN_INTERVAL_MS + "→" + MIN_SPAWN_INTERVAL_MS;
   document.getElementById("diffRound").textContent = (ROUND_DURATION_MS/1000).toFixed(0);
@@ -497,8 +552,13 @@
   window.addEventListener("keydown", function(e){
     if(MOVE_KEYS.indexOf(e.key) !== -1){ e.preventDefault(); }
     keys[e.key.toLowerCase()] = true;
+    if(state === STATE.READY && (e.key === "ArrowLeft" || e.key === "ArrowRight")){
+      (e.key === "ArrowLeft" ? charPrev : charNext).click();
+      return;
+    }
     if(e.key === "Enter" || e.key === " "){
-      if(state === STATE.READY || state === STATE.FAIL || state === STATE.ENDING){ e.preventDefault(); startGame(); }
+      if(state === STATE.READY){ if(!btnStart.disabled){ e.preventDefault(); startGame(); } }
+      else if(state === STATE.FAIL || state === STATE.ENDING){ e.preventDefault(); startGame(); }
       else if(state === STATE.PAUSED){ e.preventDefault(); resumeGame(); }
     }
   });
@@ -573,23 +633,38 @@
   // width: 빔 두께(px), dps: 갈래(branch)당 초당 데미지, branches: 빔이 뻗는 각도(라디안, 정면 기준 오프셋)
   var LASER_LEVELS = [
     null,
-    { branches:[0], width:7,  dps:9 },
-    { branches:[0], width:10, dps:11 },
-    { branches:[-0.10, 0.10], width:9, dps:8 },
-    { branches:[-0.16, 0, 0.16], width:9, dps:7 },
-    { branches:[-0.20, 0, 0.20], width:13, dps:9 }
+    { branches:[0], width:7,  dps:13 },
+    { branches:[0], width:10, dps:16 },
+    { branches:[-0.10, 0.10], width:9, dps:12 },
+    { branches:[-0.16, 0, 0.16], width:9, dps:10 },
+    { branches:[-0.20, 0, 0.20], width:13, dps:13 }
+  ];
+
+  // ---------- 드리프터 캐릭터 무기 레벨 설정 (유도 미사일, 최대 5단계) ----------
+  // count: 발사당 미사일 수, dmg: 명중 데미지, interval: 발사 간격, splash: 스플래시 반경(0이면 없음)
+  var DRIFTER_LEVELS = [
+    null,
+    { count:1, dmg:9,  interval:700, splash:0 },
+    { count:1, dmg:12, interval:620, splash:0 },
+    { count:2, dmg:13, interval:620, splash:30 },
+    { count:2, dmg:16, interval:560, splash:36 },
+    { count:3, dmg:19, interval:500, splash:42 }
   ];
 
   // ---------- 게임 변수 ----------
-  var player, enemyBullets, playerBullets, particles, pickups, shake;
+  var player, enemyBullets, playerBullets, missiles, particles, pickups, shake;
   var round, roundElapsed, spawnAcc, score;
   var eliteSpawnedIdx, eliteKilled, bossSpawned, boss;
 
   function resetGame(){
-    var weaponType = (save.selectedChar === "laser" && save.laserUnlocked) ? "laser" : "default";
-    player = { x: W/2, y: H*0.84, r: 7, speed: 280, hp: MAX_HEARTS, invuln: 0, weaponLv: 1, fireAcc: 0, weaponType: weaponType };
+    var weaponType = "default";
+    if(save.selectedChar === "laser" && save.laserUnlocked) weaponType = "laser";
+    else if(save.selectedChar === "drifter" && save.drifterUnlocked) weaponType = "drifter";
+    var maxHearts = (weaponType === "drifter") ? DRIFTER_MAX_HEARTS : MAX_HEARTS;
+    player = { x: W/2, y: H*0.84, r: 7, speed: 280, hp: maxHearts, maxHearts: maxHearts, invuln: 0, weaponLv: 1, fireAcc: 0, weaponType: weaponType };
     enemyBullets = [];
     playerBullets = [];
+    missiles = [];
     enemies = [];
     particles = [];
     pickups = [];
@@ -630,7 +705,7 @@
   function resumeGame(){ setState(stateBeforePause || STATE.PLAYING); lastTime = null; }
   function goToLobby(){
     lobbyBest.textContent = save.best;
-    updateCharSelectUI();
+    renderCharCarousel();
     setState(STATE.READY);
   }
 
@@ -669,29 +744,69 @@
   hudBest.textContent = save.best;
   lobbyBest.textContent = save.best;
 
-  // ---------- 캐릭터 선택 UI ----------
-  function updateCharSelectUI(){
-    var unlocked = !!save.laserUnlocked;
-    charCardDefault.classList.toggle("active", save.selectedChar !== "laser");
-    charCardLaser.classList.toggle("locked", !unlocked);
-    charCardLaser.disabled = !unlocked;
-    charCardLaser.classList.toggle("active", unlocked && save.selectedChar === "laser");
-    laserCharDesc.textContent = unlocked
-      ? "레이저 — 무기 강화 시 빔 폭이 넓어지고 최대 3갈래로 분기"
-      : "🔒 10라운드 클리어 시 해금";
+  // ---------- 캐릭터 캐러셀 (< 캐릭터 >) ----------
+  var CHAR_ORDER = ["default", "laser", "drifter"];
+  var CHAR_INFO = {
+    default: { icon:"▲", name:"인터셉터", color:"#7fd4cc", desc:"확산탄 — 무기 강화 시 탄이 여러 갈래로 갈라짐", lockedDesc:null },
+    laser:   { icon:"⚡", name:"레이저 발키리", color:"#c58cf0", desc:"레이저 — 무기 강화 시 빔 폭이 넓어지고 최대 3갈래로 분기", lockedDesc:"🔒 10라운드 클리어 시 해금" },
+    drifter: { icon:"◆", name:"드리프터", color:"#e3b877", desc:"유도 미사일 — 고화력 폭발형 딜러, 대신 최대 체력 2", lockedDesc:null }
+  };
+  function isCharUnlocked(id){
+    if(id === "laser") return !!save.laserUnlocked;
+    if(id === "drifter") return !!save.drifterUnlocked;
+    return true;
   }
-  charCardDefault.addEventListener("click", function(){
-    save.selectedChar = "default";
-    persistSave();
-    updateCharSelectUI();
+  var charIndex = Math.max(0, CHAR_ORDER.indexOf(save.selectedChar));
+
+  function renderCharCarousel(){
+    var id = CHAR_ORDER[charIndex];
+    var info = CHAR_INFO[id];
+    var unlocked = isCharUnlocked(id);
+    charIconBig.textContent = info.icon;
+    charIconBig.style.color = unlocked ? info.color : "";
+    charIconBig.style.textShadow = unlocked ? ("0 0 8px " + info.color + "88") : "none";
+    charNameBig.textContent = info.name;
+    if(unlocked){
+      charDescBig.textContent = info.desc;
+      charDisplay.classList.remove("locked");
+      charLockBadge.classList.add("hidden");
+      btnStart.disabled = false;
+      btnStart.textContent = "게임 시작 (Enter)";
+    }else{
+      charDescBig.textContent = (id === "drifter")
+        ? "🔒 폭탄 아이템 " + Math.min(save.bombsCollected, DRIFTER_UNLOCK_BOMBS) + "/" + DRIFTER_UNLOCK_BOMBS + "회 획득 필요"
+        : info.lockedDesc;
+      charDisplay.classList.add("locked");
+      charLockBadge.classList.remove("hidden");
+      btnStart.disabled = true;
+      btnStart.textContent = "🔒 잠김";
+    }
+    for(var di=0; di<charDots.length; di++){
+      charDots[di].classList.toggle("active", di === charIndex);
+    }
+    if(unlocked){
+      save.selectedChar = id;
+      persistSave();
+    }
+  }
+  charPrev.addEventListener("click", function(){
+    charIndex = (charIndex - 1 + CHAR_ORDER.length) % CHAR_ORDER.length;
+    renderCharCarousel();
   });
-  charCardLaser.addEventListener("click", function(){
-    if(!save.laserUnlocked) return;
-    save.selectedChar = "laser";
-    persistSave();
-    updateCharSelectUI();
+  charNext.addEventListener("click", function(){
+    charIndex = (charIndex + 1) % CHAR_ORDER.length;
+    renderCharCarousel();
   });
-  updateCharSelectUI();
+  renderCharCarousel();
+
+  // ---------- ? 도움말 (호버 + 터치 대응 클릭 토글) ----------
+  if(helpWrap){
+    btnHelp.addEventListener("click", function(e){
+      e.stopPropagation();
+      helpWrap.classList.toggle("open");
+    });
+    document.addEventListener("click", function(){ helpWrap.classList.remove("open"); });
+  }
 
   // ---------- 적 스폰 ----------
   function pickGruntType(){
@@ -775,18 +890,40 @@
     }else{ // 7~9
       tier = "hard";   hp = 230 + (round-6)*40;    speed = 46; fireInterval = 1250; scoreVal = 900; ringCount = 17; aimedCount = 4; r = 48; label = "강화 보스";
     }
+
+    // 티어별 공격 패턴 구성 — 라운드가 오를수록 패턴 종류가 늘어남, 최종 보스는 전 패턴 + 이중 링까지 사용
+    var patternCycle;
+    if(tier === "easy") patternCycle = ["ring","aimed"];
+    else if(tier === "medium") patternCycle = ["ring","aimed","cross"];
+    else if(tier === "hard") patternCycle = ["ring","aimed","cross","spiral"];
+    else patternCycle = ["ring","aimed","cross","spiral","ring2"];
+
+    // 5라운드 이상의 보스부터는 일정 시간마다 직선 레이저 공격 추가
+    var hasLaser = (round >= 5);
+    var laserInterval = isFinal ? 3600 : (tier === "hard" ? 4800 : 5500);
+    var laserWidth = isFinal ? 34 : (tier === "hard" ? 28 : 24);
+
     boss = {
       type:"boss", x: W/2, y: -60, r: r,
       hp: hp, maxHp: hp, speed: speed,
       patrolY: 110, fireTimer: 1600, fireInterval: fireInterval,
       oscAmp: 70, oscFreq: 500,
       age:0, phase:0, scoreVal: scoreVal, burstToggle:false, isFinal: isFinal,
-      tier: tier, ringCount: ringCount, aimedCount: aimedCount
+      tier: tier, ringCount: ringCount, aimedCount: aimedCount,
+      patternCycle: patternCycle, patternIdx: 0, spiralAngle: 0,
+      hasLaser: hasLaser, laserInterval: laserInterval, laserWidth: laserWidth,
+      laserPhase: "idle", laserTimer: laserInterval * 0.55, laserX: W/2
     };
     bossSpawned = true;
     bossBarWrap.classList.remove("hidden");
     document.getElementById("bossBarLabel").textContent = label;
     beep(90, 0.4, "sawtooth");
+
+    // 보스 등장 시 호위 쫄몹 소환 (엘리트 제외, 종류 무관) — 최종 보스는 대신 패턴이 더 무겁기 때문에 쫄몹 없음
+    if(!isFinal){
+      var escortCount = (tier === "easy") ? 2 : (tier === "medium" ? 3 : 4);
+      for(var esc=0; esc<escortCount; esc++){ spawnNormal(); }
+    }
   }
 
   // ---------- 적 총알 패턴 ----------
@@ -801,11 +938,20 @@
     }else if(e.type === "elite"){
       aimedShot(e.x, e.y, 3, 0.26, 110 + round*2);
     }else if(e.type === "boss"){
-      e.burstToggle = !e.burstToggle;
-      if(e.burstToggle){
-        ringBurst(e.x, e.y, e.ringCount || 12, 90 + round*2);
-      }else{
-        aimedShot(e.x, e.y, e.aimedCount || 3, 0.3, 120 + round*3);
+      e.patternIdx = (e.patternIdx + 1) % e.patternCycle.length;
+      var pattern = e.patternCycle[e.patternIdx];
+      var spd = 90 + round*2, aimedSpd = 120 + round*3;
+      if(pattern === "ring"){
+        ringBurst(e.x, e.y, e.ringCount || 12, spd);
+      }else if(pattern === "aimed"){
+        aimedShot(e.x, e.y, e.aimedCount || 3, 0.3, aimedSpd);
+      }else if(pattern === "cross"){
+        crossBurst(e.x, e.y, spd);
+      }else if(pattern === "spiral"){
+        spiralBurst(e, e.ringCount || 12, spd);
+      }else if(pattern === "ring2"){
+        ringBurst(e.x, e.y, e.ringCount || 12, spd, 0);
+        ringBurst(e.x, e.y, e.ringCount || 12, spd*0.68, Math.PI/(e.ringCount||12));
       }
     }
   }
@@ -818,10 +964,28 @@
       enemyBullets.push({ x:x, y:y, r:5.5, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd, color:"magenta" });
     }
   }
-  function ringBurst(x, y, count, spd){
+  function ringBurst(x, y, count, spd, angleOffset){
+    angleOffset = angleOffset || 0;
     for(var i=0;i<count;i++){
-      var a = (Math.PI*2/count)*i;
+      var a = (Math.PI*2/count)*i + angleOffset;
       enemyBullets.push({ x:x, y:y, r:6, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd, color:"amber" });
+    }
+  }
+  function crossBurst(x, y, spd){
+    // 플레이어 방향 + 반대 + 좌우 90도, 십자(+) 형태로 압박하는 패턴
+    var dx = player.x-x, dy = player.y-y;
+    var base = Math.atan2(dy,dx);
+    var angles = [base, base+Math.PI/2, base+Math.PI, base+Math.PI*1.5];
+    for(var i=0;i<angles.length;i++){
+      enemyBullets.push({ x:x, y:y, r:6, vx:Math.cos(angles[i])*spd, vy:Math.sin(angles[i])*spd, color:"magenta" });
+    }
+  }
+  function spiralBurst(bossObj, count, spd){
+    // 캐스팅할 때마다 각도가 조금씩 회전해 나선형으로 퍼지는 패턴
+    bossObj.spiralAngle = (bossObj.spiralAngle || 0) + 0.36;
+    for(var i=0;i<count;i++){
+      var a = bossObj.spiralAngle + (Math.PI*2/count)*i;
+      enemyBullets.push({ x:bossObj.x, y:bossObj.y, r:5.5, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd, color:"amber" });
     }
   }
 
@@ -833,6 +997,44 @@
       playerBullets.push({ x: player.x, y: player.y-10, r:4, vx: Math.cos(a)*420, vy: Math.sin(a)*420, dmg: lv.dmg });
     }
     beep(880, 0.04, "square");
+  }
+
+  // ---------- 드리프터: 유도 미사일 발사 ----------
+  function fireDrifterMissiles(){
+    var lv = DRIFTER_LEVELS[player.weaponLv];
+    var candidates = enemies.slice();
+    if(boss) candidates.push(boss);
+    candidates.sort(function(a,b){
+      var da = (a.x-player.x)*(a.x-player.x) + (a.y-player.y)*(a.y-player.y);
+      var db = (b.x-player.x)*(b.x-player.x) + (b.y-player.y)*(b.y-player.y);
+      return da-db;
+    });
+    for(var i=0;i<lv.count;i++){
+      var target = candidates.length ? (candidates[i] || candidates[0]) : null;
+      missiles.push({
+        x: player.x, y: player.y-10, vx:0, vy:-260, speed:270,
+        target: target, dmg: lv.dmg, splash: lv.splash, r:5, age:0
+      });
+    }
+    beep(700, 0.05, "sawtooth");
+  }
+  function applySplash(x, y, radius, dmg, excludeEntity){
+    for(var i=enemies.length-1;i>=0;i--){
+      var en = enemies[i];
+      if(en === excludeEntity) continue;
+      var dx=en.x-x, dy=en.y-y;
+      if(Math.sqrt(dx*dx+dy*dy) < radius+en.r){
+        en.hp -= dmg;
+        if(en.hp <= 0){ killEnemy(en); enemies.splice(i,1); }
+      }
+    }
+    if(boss && boss !== excludeEntity){
+      var bdx=boss.x-x, bdy=boss.y-y;
+      if(Math.sqrt(bdx*bdx+bdy*bdy) < radius+boss.r){
+        boss.hp -= dmg;
+        if(boss.hp <= 0){ var deadBossS=boss; boss=null; killEnemy(deadBossS); }
+      }
+    }
   }
 
   // ---------- 피격 처리 ----------
@@ -858,7 +1060,7 @@
       eliteKilled++;
       if(player.weaponLv >= 5){
         // 무기가 이미 최대 강화 상태면 대신 체력을 1 회복 (최대 체력 초과 불가)
-        player.hp = Math.min(MAX_HEARTS, player.hp + 1);
+        player.hp = Math.min(player.maxHearts, player.hp + 1);
         beep(760, 0.18, "square");
       }else{
         player.weaponLv = Math.min(5, player.weaponLv+1);
@@ -901,7 +1103,7 @@
   // ---------- HUD ----------
   function updateHud(){
     var hearts = "";
-    for(var i=0;i<MAX_HEARTS;i++){
+    for(var i=0;i<player.maxHearts;i++){
       hearts += (i < player.hp) ? "♥ " : "<span class=\"lost\">♥</span> ";
     }
     hudHearts.innerHTML = hearts.trim();
@@ -940,8 +1142,15 @@
     player.y = Math.max(player.r+2, Math.min(H-player.r-2, player.y));
     if(player.invuln>0) player.invuln = Math.max(0, player.invuln-dt*1000);
 
-    // 플레이어 발사 (기본 캐릭터: 확산탄 / 레이저 캐릭터는 아래 별도 처리)
-    if(player.weaponType !== "laser"){
+    // 플레이어 발사 (기본 캐릭터: 확산탄 / 드리프터: 유도 미사일 / 레이저 캐릭터는 아래 별도 처리)
+    if(player.weaponType === "drifter"){
+      var dlv = DRIFTER_LEVELS[player.weaponLv];
+      player.fireAcc += dt*1000;
+      if(player.fireAcc >= dlv.interval){
+        player.fireAcc = 0;
+        fireDrifterMissiles();
+      }
+    }else if(player.weaponType !== "laser"){
       var lv = WEAPON_LEVELS[player.weaponLv];
       player.fireAcc += dt*1000;
       if(player.fireAcc >= lv.interval){
@@ -993,6 +1202,31 @@
           aimedShot(e.x, e.y, 1, 0, e.bulletSpeed || 150);
           e.burstLeft--;
           e.burstTimer = e.burstGap || 110;
+        }
+      }
+      // 보스 직선 레이저 (5라운드 이상의 보스부터): 예고선 → 발사 → 재장전 순서로 진행
+      if(e.type === "boss" && e.hasLaser){
+        e.laserTimer -= dt*1000;
+        if(e.laserPhase === "idle"){
+          if(e.laserTimer <= 0){
+            e.laserPhase = "telegraph";
+            e.laserX = player.x; // 예고 시점의 플레이어 x좌표에 고정 (미리 피할 시간을 줌)
+            e.laserTimer = 650;
+            beep(220, 0.12, "sawtooth");
+          }
+        }else if(e.laserPhase === "telegraph"){
+          if(e.laserTimer <= 0){
+            e.laserPhase = "active";
+            e.laserTimer = 320;
+          }
+        }else if(e.laserPhase === "active"){
+          if(Math.abs(player.x - e.laserX) < (e.laserWidth/2 + player.r) && player.y > e.y){
+            hurtPlayer();
+          }
+          if(e.laserTimer <= 0){
+            e.laserPhase = "idle";
+            e.laserTimer = e.laserInterval;
+          }
         }
       }
       // 플레이어와 접촉 피해
@@ -1074,6 +1308,70 @@
       }
     }
 
+    // 드리프터: 유도 미사일 이동·선회·충돌
+    if(missiles.length){
+      for(i=missiles.length-1;i>=0;i--){
+        var m = missiles[i];
+        m.age += dt*1000;
+        if(m.target && (m.target.hp <= 0 || (m.target !== boss && enemies.indexOf(m.target) === -1))){
+          m.target = null;
+        }
+        if(!m.target){
+          var mBest=null, mBd=Infinity;
+          for(var mk=0;mk<enemies.length;mk++){
+            var mdx=enemies[mk].x-m.x, mdy=enemies[mk].y-m.y, mdd=mdx*mdx+mdy*mdy;
+            if(mdd<mBd){ mBd=mdd; mBest=enemies[mk]; }
+          }
+          if(boss){
+            var bmdx=boss.x-m.x, bmdy=boss.y-m.y, bmdd=bmdx*bmdx+bmdy*bmdy;
+            if(bmdd<mBd){ mBd=bmdd; mBest=boss; }
+          }
+          m.target = mBest;
+        }
+        var desiredAngle = m.target ? Math.atan2(m.target.y-m.y, m.target.x-m.x) : -Math.PI/2;
+        var curAngle = Math.atan2(m.vy, m.vx);
+        var angDiff = desiredAngle - curAngle;
+        while(angDiff > Math.PI) angDiff -= Math.PI*2;
+        while(angDiff < -Math.PI) angDiff += Math.PI*2;
+        var maxTurn = 6.0 * dt;
+        if(angDiff > maxTurn) angDiff = maxTurn; else if(angDiff < -maxTurn) angDiff = -maxTurn;
+        var newAngle = curAngle + angDiff;
+        m.vx = Math.cos(newAngle)*m.speed;
+        m.vy = Math.sin(newAngle)*m.speed;
+        m.x += m.vx*dt; m.y += m.vy*dt;
+
+        if(m.x<-30||m.x>W+30||m.y<-30||m.y>H+30){ missiles.splice(i,1); continue; }
+
+        var mHit = false, mHitX=m.x, mHitY=m.y;
+        for(var mei=enemies.length-1; mei>=0; mei--){
+          var men = enemies[mei];
+          var medx=m.x-men.x, medy=m.y-men.y;
+          if(Math.sqrt(medx*medx+medy*medy) < men.r+m.r){
+            men.hp -= m.dmg;
+            mHit = true;
+            if(m.splash>0){ applySplash(m.x, m.y, m.splash, m.dmg*0.5, men); }
+            if(men.hp <= 0){ killEnemy(men); enemies.splice(mei,1); }
+            break;
+          }
+        }
+        if(!mHit && boss){
+          var mbdx=m.x-boss.x, mbdy=m.y-boss.y;
+          if(Math.sqrt(mbdx*mbdx+mbdy*mbdy) < boss.r+m.r){
+            boss.hp -= m.dmg;
+            mHit = true;
+            if(m.splash>0){ applySplash(m.x, m.y, m.splash, m.dmg*0.5, boss); }
+            if(boss.hp <= 0){ var deadBossM=boss; boss=null; killEnemy(deadBossM); }
+          }
+        }
+        if(mHit){
+          if(!save.reduced){
+            particles.push({ x:mHitX, y:mHitY, r:0, maxR: m.splash>0?m.splash:24, life:0, maxLife:240, color:"227,163,96" });
+          }
+          missiles.splice(i,1);
+        }
+      }
+    }
+
     // 픽업 아이템 (폭탄: 화면 전체 탄 제거)
     for(i=pickups.length-1;i>=0;i--){
       var pk = pickups[i];
@@ -1101,6 +1399,9 @@
 
   function activateBomb(){
     enemyBullets = [];
+    save.bombsCollected = (save.bombsCollected || 0) + 1;
+    if(!save.drifterUnlocked && save.bombsCollected >= DRIFTER_UNLOCK_BOMBS){ save.drifterUnlocked = true; }
+    persistSave();
     if(!save.reduced){
       shake = 6;
       particles.push({ x: player.x, y: player.y, r:0, maxR:280, life:0, maxLife:420 });
@@ -1164,11 +1465,42 @@
       drawHpBar(e.x,e.y,e.r,e.hp,e.maxHp, e.type==="elite"?"#e3b877":(e.type==="tank"?"#8b93d6":"#8fd4a4"));
     }
     if(boss){
+      var bossColor = boss.isFinal ? "#e0435a" : "#ac9bd6";
       ctx.beginPath();
-      ctx.fillStyle = "#ac9bd6";
-      ctx.shadowColor = "#ac9bd6"; ctx.shadowBlur = save.reduced?0:8;
+      ctx.fillStyle = bossColor;
+      ctx.shadowColor = bossColor; ctx.shadowBlur = save.reduced?0:8;
       ctx.arc(boss.x,boss.y,boss.r,0,Math.PI*2); ctx.fill();
       ctx.shadowBlur=0;
+
+      // 보스 직선 레이저 예고/발사 렌더링
+      if(boss.hasLaser && (boss.laserPhase === "telegraph" || boss.laserPhase === "active")){
+        ctx.save();
+        if(boss.laserPhase === "telegraph"){
+          ctx.strokeStyle = "rgba(224,67,90,0.55)";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6,6]);
+        }else{
+          ctx.strokeStyle = bossColor;
+          ctx.lineWidth = boss.laserWidth;
+          ctx.globalAlpha = 0.55;
+          ctx.shadowColor = bossColor; ctx.shadowBlur = save.reduced?0:10;
+        }
+        ctx.beginPath();
+        ctx.moveTo(boss.laserX, boss.y);
+        ctx.lineTo(boss.laserX, H);
+        ctx.stroke();
+        if(boss.laserPhase === "active"){
+          ctx.globalAlpha = 1;
+          ctx.shadowBlur = 0;
+          ctx.strokeStyle = "#fbe4e8";
+          ctx.lineWidth = Math.max(2, boss.laserWidth*0.22);
+          ctx.beginPath();
+          ctx.moveTo(boss.laserX, boss.y);
+          ctx.lineTo(boss.laserX, H);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
     }
 
     // 적 총알
@@ -1190,7 +1522,7 @@
     }
     ctx.shadowBlur=0;
 
-    // 레이저 캐릭터: 연속 빔 렌더링
+    // 레이저 캐릭터: 연속 빔 렌더링 (가시성을 위해 반투명하게 — 너무 진하면 다른 요소가 안 보임)
     if((state===STATE.PLAYING || state===STATE.PAUSED) && player.weaponType==="laser"){
       var rlv = LASER_LEVELS[player.weaponLv];
       var beamLen = Math.max(W,H) * 1.4;
@@ -1201,31 +1533,48 @@
         var rang = -Math.PI/2 + rlv.branches[rbi];
         var ex = originX + Math.cos(rang)*beamLen, ey = originY + Math.sin(rang)*beamLen;
         ctx.beginPath();
-        ctx.strokeStyle = "#c58cf0";
-        ctx.globalAlpha = 0.85;
+        ctx.strokeStyle = "#b58ce6";
+        ctx.globalAlpha = 0.42;
         ctx.lineWidth = rlv.width;
-        ctx.shadowColor = "#c58cf0"; ctx.shadowBlur = save.reduced?0:8;
+        ctx.shadowColor = "#b58ce6"; ctx.shadowBlur = save.reduced?0:5;
         ctx.moveTo(originX, originY);
         ctx.lineTo(ex, ey);
         ctx.stroke();
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = 0.75;
         ctx.beginPath();
         ctx.strokeStyle = "#f2e6fb";
-        ctx.lineWidth = Math.max(1.5, rlv.width*0.32);
+        ctx.lineWidth = Math.max(1.2, rlv.width*0.26);
         ctx.shadowBlur = 0;
         ctx.moveTo(originX, originY);
         ctx.lineTo(ex, ey);
         ctx.stroke();
+        ctx.globalAlpha = 1;
       }
       ctx.restore();
       ctx.shadowBlur = 0;
+    }
+
+    // 드리프터: 유도 미사일 렌더링
+    for(i=0;i<missiles.length;i++){
+      var mi = missiles[i];
+      var mAng = Math.atan2(mi.vy, mi.vx);
+      ctx.save();
+      ctx.translate(mi.x, mi.y);
+      ctx.rotate(mAng + Math.PI/2);
+      ctx.shadowColor = "#e3b877"; ctx.shadowBlur = save.reduced?0:6;
+      ctx.fillStyle = "#e3b877";
+      ctx.beginPath();
+      ctx.moveTo(0,-7); ctx.lineTo(4,6); ctx.lineTo(0,3); ctx.lineTo(-4,6); ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.restore();
     }
 
     // 플레이어
     if(state===STATE.PLAYING || state===STATE.PAUSED){
       var blink = player.invuln>0 && Math.floor(player.invuln/100)%2===0;
       if(!blink){
-        var shipColor = player.weaponType==="laser" ? "#c58cf0" : "#7fd4cc";
+        var shipColor = player.weaponType==="laser" ? "#c58cf0" : (player.weaponType==="drifter" ? "#e3b877" : "#7fd4cc");
         ctx.save();
         ctx.translate(player.x, player.y);
         ctx.shadowColor=shipColor; ctx.shadowBlur=save.reduced?0:6;
@@ -1261,12 +1610,12 @@
       ctx.restore();
     }
 
-    // 파티클 (폭탄 충격파)
+    // 파티클 (폭탄 충격파 / 미사일 폭발)
     for(i=0;i<particles.length;i++){
       var pt = particles[i];
       var alpha = Math.max(0, 1 - pt.life/pt.maxLife);
       ctx.beginPath();
-      ctx.strokeStyle = "rgba(240,213,133," + (alpha*0.7).toFixed(2) + ")";
+      ctx.strokeStyle = "rgba(" + (pt.color || "240,213,133") + "," + (alpha*0.7).toFixed(2) + ")";
       ctx.lineWidth = 2.5;
       ctx.arc(pt.x, pt.y, Math.max(0,pt.r), 0, Math.PI*2);
       ctx.stroke();
