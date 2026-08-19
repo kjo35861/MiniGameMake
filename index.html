@@ -261,6 +261,14 @@
 
   @media (max-width: 560px){
     button{ padding: 12px 18px; font-size: 13px; }
+    .help-tooltip{
+      position: fixed;
+      top: 50%; left: 50%; bottom: auto;
+      transform: translate(-50%, -50%);
+      width: min(88vw, 300px);
+      max-height: 70vh;
+      overflow-y: auto;
+    }
   }
 
   .info-panel{
@@ -350,7 +358,7 @@
           <div class="help-tooltip" id="helpTooltip">
             <ul class="lobby-rules">
               <li><kbd>방향키</kbd>/<kbd>WASD</kbd> 이동 (모바일은 화면을 손가락으로 드래그) — 공격은 자동</li>
-              <li>일반 몬스터 처치로 진행률 상승, 진행률 50%에서 엘리트 1마리 등장</li>
+              <li>시간이 지날수록 진행률이 자동으로 상승, 진행률 50%에서 엘리트 1마리 등장</li>
               <li>2라운드부터 빠른 속사형, 4라운드부터 묵직한 탱커형 몬스터가 섞여서 등장</li>
               <li>몬스터를 처치하면 확률로 💣 폭탄 아이템이 떨어짐 — 닿으면 화면의 적 탄을 전부 제거</li>
               <li>엘리트 처치 시 무기 강화(최대 Lv.5), 무기가 이미 최대라면 대신 체력 1 회복</li>
@@ -402,7 +410,7 @@
     <div class="status-line">현재 상태: <b id="panelState">대기중</b></div>
     <details class="rules-details" id="rulesDetails">
       <summary>게임 규칙 · 조작법 보기</summary>
-      <div><strong>규칙</strong> — <kbd>방향키</kbd> 또는 <kbd>WASD</kbd>로 이동합니다(모바일에서는 게임 화면을 손가락으로 드래그해서 이동). 탄막은 자동 발사됩니다. 일반 몬스터는 상시 등장하고(2라운드부터 빠른 속사형, 4라운드부터 묵직한 탱커형이 섞여 등장), 라운드 진행률이 50%에 도달하면 엘리트가 1마리 등장합니다. 몬스터 처치 시 확률로 💣 폭탄 아이템이 떨어지며, 획득하면 화면의 적 탄을 전부 제거합니다. 진행률 100%에서 보스가 등장하며 처치 시 다음 라운드로 진행합니다. 라운드가 오를수록 일반 몬스터의 등장 간격이 짧아지고 발사하는 탄의 수와 속도도 늘어납니다. 10라운드는 최종 라운드로, 강화된 최종 보스를 처치하면 게임이 클리어됩니다.</div>
+      <div><strong>규칙</strong> — <kbd>방향키</kbd> 또는 <kbd>WASD</kbd>로 이동합니다(모바일에서는 게임 화면을 손가락으로 드래그해서 이동). 탄막은 자동 발사됩니다. 라운드 진행률은 몬스터를 잡지 않아도 시간이 지나면 자동으로 오르며, 일반 몬스터는 그 시간 동안 상시 등장합니다(2라운드부터 빠른 속사형, 4라운드부터 묵직한 탱커형이 섞여 등장). 진행률이 50%에 도달하면 엘리트가 1마리 등장합니다. 몬스터 처치 시 확률로 💣 폭탄 아이템이 떨어지며, 획득하면 화면의 적 탄을 전부 제거합니다. 진행률 100%에서 보스가 등장하며 처치 시 다음 라운드로 진행합니다. 라운드가 오를수록 일반 몬스터의 등장 간격이 짧아지고 발사하는 탄의 수와 속도도 늘어납니다. 10라운드는 최종 라운드로, 강화된 최종 보스를 처치하면 게임이 클리어됩니다.</div>
       <div style="margin-top:6px;"><strong>강화</strong> — 엘리트를 처치할 때마다 무기 레벨이 1씩 올라가며 최대 5단계까지 강화됩니다(발사 수·연사속도 증가). 하트는 3개이며 모두 잃으면 실패로 판정됩니다(피격 후 1초 무적).</div>
       <div style="margin-top:6px;"><strong>버튼</strong> — 🔊 소리 끄기: 효과음 음소거 · 🌀 움직임 줄이기: 화면 흔들림/글로우 감소 · 🔄 처음부터: 라운드 1부터 다시 시작(최고 기록은 유지).</div>
       <div class="diff-note">난이도 상수(테스트용) — 일반 몬스터 생성 간격: <span id="diffSpawn">1700→550</span>ms (라운드마다 감소) / 라운드 진행 시간: <span id="diffRound">40</span>s</div>
@@ -628,11 +636,11 @@
   // ---------- 무기 레벨 설정 (최대 5단계) ----------
   var WEAPON_LEVELS = [
     null,
-    { angles:[0], interval:260, dmg:2 },
-    { angles:[-0.08,0.08], interval:230, dmg:2 },
-    { angles:[-0.16,0,0.16], interval:200, dmg:2 },
-    { angles:[-0.22,-0.08,0.08,0.22], interval:170, dmg:2 },
-    { angles:[-0.26,-0.13,0,0.13,0.26], interval:140, dmg:3 }
+    { angles:[0], interval:260, dmg:1.2 },
+    { angles:[-0.08,0.08], interval:230, dmg:1.2 },
+    { angles:[-0.16,0,0.16], interval:200, dmg:1.2 },
+    { angles:[-0.22,-0.08,0.08,0.22], interval:170, dmg:1.2 },
+    { angles:[-0.26,-0.13,0,0.13,0.26], interval:140, dmg:1.8 }
   ];
 
   // ---------- 레이저 캐릭터 무기 레벨 설정 (최대 5단계) ----------
@@ -650,11 +658,11 @@
   // count: 발사당 미사일 수, dmg: 명중 데미지, interval: 발사 간격, splash: 스플래시 반경(0이면 없음)
   var DRIFTER_LEVELS = [
     null,
-    { count:1, dmg:9,  interval:700, splash:0 },
-    { count:1, dmg:12, interval:620, splash:0 },
-    { count:2, dmg:13, interval:620, splash:30 },
-    { count:2, dmg:16, interval:560, splash:36 },
-    { count:3, dmg:19, interval:500, splash:42 }
+    { count:1, dmg:3.6, interval:700, splash:0 },
+    { count:1, dmg:4.8, interval:620, splash:0 },
+    { count:2, dmg:5.2, interval:620, splash:30 },
+    { count:2, dmg:6.4, interval:560, splash:36 },
+    { count:3, dmg:7.6, interval:500, splash:42 }
   ];
 
   // ---------- 게임 변수 ----------
@@ -949,17 +957,18 @@
       e.patternIdx = (e.patternIdx + 1) % e.patternCycle.length;
       var pattern = e.patternCycle[e.patternIdx];
       var spd = 90 + round*2, aimedSpd = 120 + round*3;
+      var ringSpd = 145 + round*3; // 벽에 튕기는 노란 탄막은 더 빠르게 — 튕기며 오래 남아있는 만큼 위협적이어야 함
       if(pattern === "ring"){
-        ringBurst(e.x, e.y, e.ringCount || 12, spd);
+        ringBurst(e.x, e.y, e.ringCount || 12, ringSpd);
       }else if(pattern === "aimed"){
         aimedShot(e.x, e.y, e.aimedCount || 3, 0.3, aimedSpd);
       }else if(pattern === "cross"){
         crossBurst(e.x, e.y, spd);
       }else if(pattern === "spiral"){
-        spiralBurst(e, e.ringCount || 12, spd);
+        spiralBurst(e, e.ringCount || 12, ringSpd);
       }else if(pattern === "ring2"){
-        ringBurst(e.x, e.y, e.ringCount || 12, spd, 0);
-        ringBurst(e.x, e.y, e.ringCount || 12, spd*0.68, Math.PI/(e.ringCount||12));
+        ringBurst(e.x, e.y, e.ringCount || 12, ringSpd, 0);
+        ringBurst(e.x, e.y, e.ringCount || 12, ringSpd*0.68, Math.PI/(e.ringCount||12));
       }
     }
   }
@@ -1017,10 +1026,13 @@
       var db = (b.x-player.x)*(b.x-player.x) + (b.y-player.y)*(b.y-player.y);
       return da-db;
     });
+    // 발사 지점을 왼쪽/정면/오른쪽으로 분산 (여러 발이 한 점에서 겹쳐 나가지 않도록)
+    var LAUNCH_OFFSETS = { 1:[0], 2:[-10,10], 3:[-14,0,14] };
+    var offsets = LAUNCH_OFFSETS[lv.count] || [0];
     for(var i=0;i<lv.count;i++){
       var target = candidates.length ? (candidates[i] || candidates[0]) : null;
       missiles.push({
-        x: player.x, y: player.y-10, vx:0, vy:-260, speed:270,
+        x: player.x + (offsets[i] || 0), y: player.y-10, vx:0, vy:-260, speed:270,
         target: target, dmg: lv.dmg, splash: lv.splash, r:5, age:0, maxLife: MISSILE_LIFESPAN_MS
       });
     }
