@@ -466,6 +466,8 @@
   var DRIFTER_UNLOCK_BOMBS = 15; // 드리프터 해금에 필요한 폭탄 아이템 누적 획득 수
   var INVULN_MS = 1000;
   var MAX_ROUND = 10; // 10라운드가 최종 라운드 (최종 보스 등장)
+  var BOUNCE_BULLET_LIFESPAN_MS = 4000; // 벽에 튕기는 노란 탄막(링/나선)이 사라지기까지 걸리는 시간
+  var MISSILE_LIFESPAN_MS = 2500; // 드리프터 유도 미사일이 사라지기까지 걸리는 시간
 
   function currentSpawnInterval(){
     return Math.max(MIN_SPAWN_INTERVAL_MS, NORMAL_SPAWN_INTERVAL_MS - (round-1)*130);
@@ -559,6 +561,10 @@
     if(e.key === "Enter" || e.key === " "){
       if(state === STATE.READY){ if(!btnStart.disabled){ e.preventDefault(); startGame(); } }
       else if(state === STATE.FAIL || state === STATE.ENDING){ e.preventDefault(); startGame(); }
+      else if(state === STATE.PAUSED){ e.preventDefault(); resumeGame(); }
+    }
+    if(e.key === "Escape"){
+      if(state === STATE.PLAYING){ e.preventDefault(); stateBeforePause = state; setState(STATE.PAUSED); }
       else if(state === STATE.PAUSED){ e.preventDefault(); resumeGame(); }
     }
   });
@@ -970,7 +976,7 @@
     angleOffset = angleOffset || 0;
     for(var i=0;i<count;i++){
       var a = (Math.PI*2/count)*i + angleOffset;
-      enemyBullets.push({ x:x, y:y, r:6, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd, color:"amber" });
+      enemyBullets.push({ x:x, y:y, r:6, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd, color:"amber", bounce:true, life:0, maxLife:BOUNCE_BULLET_LIFESPAN_MS });
     }
   }
   function crossBurst(x, y, spd){
@@ -987,7 +993,7 @@
     bossObj.spiralAngle = (bossObj.spiralAngle || 0) + 0.36;
     for(var i=0;i<count;i++){
       var a = bossObj.spiralAngle + (Math.PI*2/count)*i;
-      enemyBullets.push({ x:bossObj.x, y:bossObj.y, r:5.5, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd, color:"amber" });
+      enemyBullets.push({ x:bossObj.x, y:bossObj.y, r:5.5, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd, color:"amber", bounce:true, life:0, maxLife:BOUNCE_BULLET_LIFESPAN_MS });
     }
   }
 
@@ -1015,7 +1021,7 @@
       var target = candidates.length ? (candidates[i] || candidates[0]) : null;
       missiles.push({
         x: player.x, y: player.y-10, vx:0, vy:-260, speed:270,
-        target: target, dmg: lv.dmg, splash: lv.splash, r:5, age:0
+        target: target, dmg: lv.dmg, splash: lv.splash, r:5, age:0, maxLife: MISSILE_LIFESPAN_MS
       });
     }
     beep(700, 0.05, "sawtooth");
@@ -1244,7 +1250,20 @@
     for(i=enemyBullets.length-1;i>=0;i--){
       var b = enemyBullets[i];
       b.x += b.vx*dt; b.y += b.vy*dt;
-      if(b.x<-30||b.x>W+30||b.y<-30||b.y>H+30){ enemyBullets.splice(i,1); continue; }
+      if(b.bounce){
+        b.life += dt*1000;
+        if(b.life >= b.maxLife){ enemyBullets.splice(i,1); continue; }
+        var bounced = false;
+        if(b.x - b.r < 0){ b.x = b.r; b.vx = Math.abs(b.vx); bounced = true; }
+        else if(b.x + b.r > W){ b.x = W - b.r; b.vx = -Math.abs(b.vx); bounced = true; }
+        if(b.y - b.r < 0){ b.y = b.r; b.vy = Math.abs(b.vy); bounced = true; }
+        else if(b.y + b.r > H){ b.y = H - b.r; b.vy = -Math.abs(b.vy); bounced = true; }
+        if(bounced && !save.reduced){
+          particles.push({ x:b.x, y:b.y, r:0, maxR:14, life:0, maxLife:140, color:"227,184,119" });
+        }
+      }else if(b.x<-30||b.x>W+30||b.y<-30||b.y>H+30){
+        enemyBullets.splice(i,1); continue;
+      }
       var pdx=b.x-player.x, pdy=b.y-player.y;
       if(Math.sqrt(pdx*pdx+pdy*pdy) < b.r+player.r){
         enemyBullets.splice(i,1);
@@ -1318,6 +1337,7 @@
       for(i=missiles.length-1;i>=0;i--){
         var m = missiles[i];
         m.age += dt*1000;
+        if(m.age >= m.maxLife){ missiles.splice(i,1); continue; }
         if(m.target && (m.target.hp <= 0 || (m.target !== boss && enemies.indexOf(m.target) === -1))){
           m.target = null;
         }
@@ -1477,28 +1497,39 @@
       ctx.arc(boss.x,boss.y,boss.r,0,Math.PI*2); ctx.fill();
       ctx.shadowBlur=0;
 
-      // 보스 직선 레이저 예고/발사 렌더링
+      // 보스 직선 레이저 예고/발사 렌더링 — 표시 범위를 실제 피격 판정 범위(laserWidth + 플레이어 지름)와 동일하게 맞춤
       if(boss.hasLaser && (boss.laserPhase === "telegraph" || boss.laserPhase === "active")){
+        var hitWidth = boss.laserWidth + player.r*2;
         ctx.save();
         if(boss.laserPhase === "telegraph"){
-          ctx.strokeStyle = "rgba(224,67,90,0.55)";
+          var pulse = 0.6 + 0.3*Math.sin(boss.age/65);
+          // 채워진 경고 영역 (실제 피격 범위와 동일한 폭)
+          ctx.fillStyle = "rgba(255,64,86," + (0.32*pulse).toFixed(2) + ")";
+          ctx.fillRect(boss.laserX - hitWidth/2, boss.y, hitWidth, H - boss.y);
+          // 좌우 경계선 (여기까지가 실제로 맞는 범위)
+          ctx.setLineDash([7,5]);
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = "rgba(255,110,124," + pulse.toFixed(2) + ")";
+          ctx.beginPath(); ctx.moveTo(boss.laserX - hitWidth/2, boss.y); ctx.lineTo(boss.laserX - hitWidth/2, H); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(boss.laserX + hitWidth/2, boss.y); ctx.lineTo(boss.laserX + hitWidth/2, H); ctx.stroke();
+          // 중심 기준선
+          ctx.setLineDash([]);
           ctx.lineWidth = 2;
-          ctx.setLineDash([6,6]);
+          ctx.strokeStyle = "rgba(255,170,178," + pulse.toFixed(2) + ")";
+          ctx.beginPath(); ctx.moveTo(boss.laserX, boss.y); ctx.lineTo(boss.laserX, H); ctx.stroke();
         }else{
           ctx.strokeStyle = bossColor;
-          ctx.lineWidth = boss.laserWidth;
+          ctx.lineWidth = hitWidth;
           ctx.globalAlpha = 0.55;
           ctx.shadowColor = bossColor; ctx.shadowBlur = save.reduced?0:10;
-        }
-        ctx.beginPath();
-        ctx.moveTo(boss.laserX, boss.y);
-        ctx.lineTo(boss.laserX, H);
-        ctx.stroke();
-        if(boss.laserPhase === "active"){
+          ctx.beginPath();
+          ctx.moveTo(boss.laserX, boss.y);
+          ctx.lineTo(boss.laserX, H);
+          ctx.stroke();
           ctx.globalAlpha = 1;
           ctx.shadowBlur = 0;
           ctx.strokeStyle = "#fbe4e8";
-          ctx.lineWidth = Math.max(2, boss.laserWidth*0.22);
+          ctx.lineWidth = Math.max(2, hitWidth*0.22);
           ctx.beginPath();
           ctx.moveTo(boss.laserX, boss.y);
           ctx.lineTo(boss.laserX, H);
@@ -1512,9 +1543,16 @@
     for(i=0;i<enemyBullets.length;i++){
       var b = enemyBullets[i];
       var bc = b.color==="amber" ? "#e3b877" : "#e491ae";
+      var bAlpha = 1;
+      if(b.bounce){
+        var remain = b.maxLife - b.life;
+        if(remain < 500) bAlpha = Math.max(0.15, remain/500);
+      }
       ctx.beginPath(); ctx.fillStyle=bc;
-      ctx.shadowColor=bc; ctx.shadowBlur=save.reduced?0:4;
+      ctx.globalAlpha = bAlpha;
+      ctx.shadowColor=bc; ctx.shadowBlur=save.reduced?0:(b.bounce?6:4);
       ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1;
     }
     ctx.shadowBlur=0;
 
@@ -1563,15 +1601,20 @@
     for(i=0;i<missiles.length;i++){
       var mi = missiles[i];
       var mAng = Math.atan2(mi.vy, mi.vx);
+      var mAlpha = 1;
+      var mRemain = mi.maxLife - mi.age;
+      if(mRemain < 400) mAlpha = Math.max(0.15, mRemain/400);
       ctx.save();
       ctx.translate(mi.x, mi.y);
       ctx.rotate(mAng + Math.PI/2);
+      ctx.globalAlpha = mAlpha;
       ctx.shadowColor = "#e3b877"; ctx.shadowBlur = save.reduced?0:6;
       ctx.fillStyle = "#e3b877";
       ctx.beginPath();
       ctx.moveTo(0,-7); ctx.lineTo(4,6); ctx.lineTo(0,3); ctx.lineTo(-4,6); ctx.closePath();
       ctx.fill();
       ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
       ctx.restore();
     }
 
