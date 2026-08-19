@@ -167,6 +167,31 @@
   .lobby-rules li{ padding-left:16px; position:relative; }
   .lobby-rules li::before{ content:"▸"; position:absolute; left:0; color: var(--cyan-dim); }
   .lobby-actions{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:6px; }
+
+  .char-select{ margin: 6px 0 4px; }
+  .char-select-label{ font-size:10.5px; color: var(--ink-dim); letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px; }
+  .char-cards{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
+  .char-card{
+    font-family:'JetBrains Mono', monospace;
+    width: 168px;
+    background: rgba(20,24,38,0.7);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 12px 10px;
+    cursor: pointer;
+    text-align: center;
+    color: var(--ink);
+    transition: border-color .15s, box-shadow .15s, opacity .15s;
+  }
+  .char-card:hover:not(.locked){ border-color: var(--cyan-dim); }
+  .char-card.active{ border-color: var(--cyan); box-shadow: 0 0 10px rgba(127,212,204,0.18) inset; }
+  .char-card .char-icon{ font-size:22px; line-height:1; margin-bottom:6px; }
+  .char-icon-default{ color: var(--cyan); text-shadow: 0 0 6px rgba(127,212,204,0.5); }
+  .char-icon-laser{ color: var(--violet); text-shadow: 0 0 6px rgba(172,155,214,0.5); }
+  .char-card .char-name{ font-size:12px; font-weight:700; margin-bottom:4px; }
+  .char-card .char-desc{ font-size:10px; color: var(--ink-dim); line-height:1.5; }
+  .char-card.locked{ opacity:.45; cursor: not-allowed; }
+  .char-card.locked .char-icon{ color: var(--ink-dim); text-shadow:none; }
   .debug-only{ display:none !important; }
   body.debug-mode .debug-only{ display:inline-flex !important; }
   .lobby-actions.debug-mode-flex{ display:flex; }
@@ -263,14 +288,31 @@
       <div class="lobby-eyebrow">NEON WARD ARCADE</div>
       <h2>로비</h2>
       <div class="lobby-stat">최고 기록 <b id="lobbyBest">0</b></div>
+
+      <div class="char-select">
+        <div class="char-select-label">캐릭터 선택</div>
+        <div class="char-cards">
+          <button type="button" class="char-card" id="charCardDefault" data-char="default">
+            <div class="char-icon char-icon-default">▲</div>
+            <div class="char-name">인터셉터</div>
+            <div class="char-desc">확산탄 — 무기 강화 시 탄이 여러 갈래로 갈라짐</div>
+          </button>
+          <button type="button" class="char-card locked" id="charCardLaser" data-char="laser" disabled>
+            <div class="char-icon char-icon-laser">⚡</div>
+            <div class="char-name">레이저 발키리</div>
+            <div class="char-desc" id="laserCharDesc">🔒 10라운드 클리어 시 해금</div>
+          </button>
+        </div>
+      </div>
+
       <ul class="lobby-rules">
-        <li><kbd>방향키</kbd>/<kbd>WASD</kbd> 이동 (모바일은 화면을 손가락으로 드래그) — 탄막은 자동 발사</li>
+        <li><kbd>방향키</kbd>/<kbd>WASD</kbd> 이동 (모바일은 화면을 손가락으로 드래그) — 공격은 자동</li>
         <li>일반 몬스터 처치로 진행률 상승, 진행률 50%에서 엘리트 1마리 등장</li>
         <li>2라운드부터 빠른 속사형, 4라운드부터 묵직한 탱커형 몬스터가 섞여서 등장</li>
         <li>몬스터를 처치하면 확률로 💣 폭탄 아이템이 떨어짐 — 닿으면 화면의 적 탄을 전부 제거</li>
         <li>엘리트 처치 시 무기 강화(최대 Lv.5), 무기가 이미 최대라면 대신 체력 1 회복</li>
         <li>진행률 100%에서 보스 등장 → 처치 시 다음 라운드로 진행</li>
-        <li>하트 3개를 모두 잃으면 실패, 10라운드 최종 보스를 처치하면 클리어</li>
+        <li>하트 3개를 모두 잃으면 실패, 10라운드 최종 보스를 처치하면 클리어 (레이저 발키리 캐릭터 해금)</li>
       </ul>
       <div class="lobby-actions">
         <button class="primary" id="btnStart">게임 시작 (Enter)</button>
@@ -282,6 +324,7 @@
       <h2>실패</h2>
       <p class="score-line">도달 라운드: <b id="failRound">1</b> · 점수: <b id="failScore">0</b> · 최고 기록: <b id="failBest">0</b></p>
       <button class="primary" id="btnRetryFail">다시 시작 (Enter)</button>
+      <button id="btnLobbyFromFail">← 로비로 (캐릭터 선택)</button>
     </div>
 
     <div class="overlay state-clear hidden" id="ovClear">
@@ -294,7 +337,9 @@
       <h2>GAME CLEAR</h2>
       <p>10라운드 최종 보스를 처치했습니다. 수고했어요!</p>
       <p class="score-line">최종 점수: <b id="endingScore">0</b> · 최고 기록: <b id="endingBest">0</b></p>
+      <p class="score-line hidden" id="endingUnlockNote">🔓 새 캐릭터 <b>레이저 발키리</b>가 해금되었습니다! 로비에서 선택할 수 있어요.</p>
       <button class="primary" id="btnRetryEnding">다시 도전 (Enter)</button>
+      <button id="btnLobbyFromEnding">← 로비로 (캐릭터 선택)</button>
     </div>
 
     <div class="overlay state-paused hidden" id="ovPaused">
@@ -339,19 +384,22 @@
     }
   }catch(e){ /* URLSearchParams 미지원 환경이면 그냥 숨김 상태 유지 */ }
 
-  // ---------- 저장 데이터 (최고 기록만 보존) ----------
+  // ---------- 저장 데이터 (최고 기록·캐릭터 해금/선택 보존) ----------
   var STORAGE_KEY = "neonward_wave_save_v1";
-  function defaultSave(){ return { best: 0, muted: false, reduced: false }; }
+  function defaultSave(){ return { best: 0, muted: false, reduced: false, selectedChar: "default", laserUnlocked: false }; }
   function loadSave(){
     try{
       var raw = localStorage.getItem(STORAGE_KEY);
       if(!raw) return defaultSave();
       var parsed = JSON.parse(raw);
       if(!parsed || typeof parsed !== "object") return defaultSave();
+      var selectedChar = (parsed.selectedChar === "laser") ? "laser" : "default";
       return {
         best: (typeof parsed.best === "number" && isFinite(parsed.best) && parsed.best >= 0) ? parsed.best : 0,
         muted: !!parsed.muted,
-        reduced: !!parsed.reduced
+        reduced: !!parsed.reduced,
+        laserUnlocked: !!parsed.laserUnlocked,
+        selectedChar: selectedChar
       };
     }catch(e){ return defaultSave(); }
   }
@@ -359,6 +407,8 @@
     try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(save)); }catch(e){}
   }
   var save = loadSave();
+  // 저장값이 손상돼 selectedChar가 laser인데 해금 기록이 없다면 안전하게 default로 되돌림
+  if(save.selectedChar === "laser" && !save.laserUnlocked){ save.selectedChar = "default"; }
 
   // ---------- 난이도 상수 (테스트용) ----------
   var NORMAL_SPAWN_INTERVAL_MS = 1700; // 1라운드 기준값 (라운드마다 감소)
@@ -417,6 +467,9 @@
   var btnJumpRound10Lobby = document.getElementById("btnJumpRound10Lobby");
   var lobbyBest = document.getElementById("lobbyBest");
   var btnPause = document.getElementById("btnPause");
+  var charCardDefault = document.getElementById("charCardDefault");
+  var charCardLaser = document.getElementById("charCardLaser");
+  var laserCharDesc = document.getElementById("laserCharDesc");
 
   document.getElementById("diffSpawn").textContent = NORMAL_SPAWN_INTERVAL_MS + "→" + MIN_SPAWN_INTERVAL_MS;
   document.getElementById("diffRound").textContent = (ROUND_DURATION_MS/1000).toFixed(0);
@@ -516,13 +569,25 @@
     { angles:[-0.26,-0.13,0,0.13,0.26], interval:140, dmg:3 }
   ];
 
+  // ---------- 레이저 캐릭터 무기 레벨 설정 (최대 5단계) ----------
+  // width: 빔 두께(px), dps: 갈래(branch)당 초당 데미지, branches: 빔이 뻗는 각도(라디안, 정면 기준 오프셋)
+  var LASER_LEVELS = [
+    null,
+    { branches:[0], width:7,  dps:9 },
+    { branches:[0], width:10, dps:11 },
+    { branches:[-0.10, 0.10], width:9, dps:8 },
+    { branches:[-0.16, 0, 0.16], width:9, dps:7 },
+    { branches:[-0.20, 0, 0.20], width:13, dps:9 }
+  ];
+
   // ---------- 게임 변수 ----------
   var player, enemyBullets, playerBullets, particles, pickups, shake;
   var round, roundElapsed, spawnAcc, score;
   var eliteSpawnedIdx, eliteKilled, bossSpawned, boss;
 
   function resetGame(){
-    player = { x: W/2, y: H*0.84, r: 7, speed: 280, hp: MAX_HEARTS, invuln: 0, weaponLv: 1, fireAcc: 0 };
+    var weaponType = (save.selectedChar === "laser" && save.laserUnlocked) ? "laser" : "default";
+    player = { x: W/2, y: H*0.84, r: 7, speed: 280, hp: MAX_HEARTS, invuln: 0, weaponLv: 1, fireAcc: 0, weaponType: weaponType };
     enemyBullets = [];
     playerBullets = [];
     enemies = [];
@@ -563,6 +628,11 @@
     lastTime = null;
   }
   function resumeGame(){ setState(stateBeforePause || STATE.PLAYING); lastTime = null; }
+  function goToLobby(){
+    lobbyBest.textContent = save.best;
+    updateCharSelectUI();
+    setState(STATE.READY);
+  }
 
   btnStart.addEventListener("click", startGame);
   btnRetryFail.addEventListener("click", startGame);
@@ -570,6 +640,8 @@
   btnRestart.addEventListener("click", startGame);
   btnJumpRound10.addEventListener("click", startAtFinalRound);
   btnJumpRound10Lobby.addEventListener("click", startAtFinalRound);
+  document.getElementById("btnLobbyFromFail").addEventListener("click", goToLobby);
+  document.getElementById("btnLobbyFromEnding").addEventListener("click", goToLobby);
   btnResume.addEventListener("click", resumeGame);
   btnPause.addEventListener("click", function(){
     if(state === STATE.PLAYING){
@@ -596,6 +668,30 @@
   btnReduced.textContent = save.reduced ? "🌀 움직임 원래대로" : "🌀 움직임 줄이기";
   hudBest.textContent = save.best;
   lobbyBest.textContent = save.best;
+
+  // ---------- 캐릭터 선택 UI ----------
+  function updateCharSelectUI(){
+    var unlocked = !!save.laserUnlocked;
+    charCardDefault.classList.toggle("active", save.selectedChar !== "laser");
+    charCardLaser.classList.toggle("locked", !unlocked);
+    charCardLaser.disabled = !unlocked;
+    charCardLaser.classList.toggle("active", unlocked && save.selectedChar === "laser");
+    laserCharDesc.textContent = unlocked
+      ? "레이저 — 무기 강화 시 빔 폭이 넓어지고 최대 3갈래로 분기"
+      : "🔒 10라운드 클리어 시 해금";
+  }
+  charCardDefault.addEventListener("click", function(){
+    save.selectedChar = "default";
+    persistSave();
+    updateCharSelectUI();
+  });
+  charCardLaser.addEventListener("click", function(){
+    if(!save.laserUnlocked) return;
+    save.selectedChar = "laser";
+    persistSave();
+    updateCharSelectUI();
+  });
+  updateCharSelectUI();
 
   // ---------- 적 스폰 ----------
   function pickGruntType(){
@@ -668,17 +764,28 @@
   }
   function spawnBossFn(){
     var isFinal = (round === MAX_ROUND);
-    var hp = isFinal ? 320 : (50 + round*20);
+    // 라운드 구간별 보스 난이도 티어: 1~2 쉬움 / 3~6 어려움 / 7~9 더 어려움 / 10 최종(가장 어려움)
+    var tier, hp, speed, fireInterval, scoreVal, ringCount, aimedCount, r, label;
+    if(isFinal){
+      tier = "final";  hp = 420; speed = 50; fireInterval = 1000; scoreVal = 1800; ringCount = 20; aimedCount = 5; r = 54; label = "최종 보스";
+    }else if(round <= 2){
+      tier = "easy";   hp = 40 + round*15;        speed = 32; fireInterval = 1900; scoreVal = 400; ringCount = 8;  aimedCount = 3; r = 38; label = "BOSS";
+    }else if(round <= 6){
+      tier = "medium"; hp = 90 + (round-2)*30;     speed = 40; fireInterval = 1500; scoreVal = 650; ringCount = 13; aimedCount = 4; r = 42; label = "BOSS";
+    }else{ // 7~9
+      tier = "hard";   hp = 230 + (round-6)*40;    speed = 46; fireInterval = 1250; scoreVal = 900; ringCount = 17; aimedCount = 4; r = 48; label = "강화 보스";
+    }
     boss = {
-      type:"boss", x: W/2, y: -60, r: isFinal ? 52 : 42,
-      hp: hp, maxHp: hp, speed: isFinal ? 44 : 38,
-      patrolY: 110, fireTimer: 1600, fireInterval: isFinal ? 1150 : 1700,
+      type:"boss", x: W/2, y: -60, r: r,
+      hp: hp, maxHp: hp, speed: speed,
+      patrolY: 110, fireTimer: 1600, fireInterval: fireInterval,
       oscAmp: 70, oscFreq: 500,
-      age:0, phase:0, scoreVal: isFinal ? 1500 : 500, burstToggle:false, isFinal: isFinal
+      age:0, phase:0, scoreVal: scoreVal, burstToggle:false, isFinal: isFinal,
+      tier: tier, ringCount: ringCount, aimedCount: aimedCount
     };
     bossSpawned = true;
     bossBarWrap.classList.remove("hidden");
-    document.getElementById("bossBarLabel").textContent = isFinal ? "최종 보스" : "BOSS";
+    document.getElementById("bossBarLabel").textContent = label;
     beep(90, 0.4, "sawtooth");
   }
 
@@ -696,9 +803,9 @@
     }else if(e.type === "boss"){
       e.burstToggle = !e.burstToggle;
       if(e.burstToggle){
-        ringBurst(e.x, e.y, 12, 90 + round*2);
+        ringBurst(e.x, e.y, e.ringCount || 12, 90 + round*2);
       }else{
-        aimedShot(e.x, e.y, 3, 0.3, 120 + round*3);
+        aimedShot(e.x, e.y, e.aimedCount || 3, 0.3, 120 + round*3);
       }
     }
   }
@@ -763,10 +870,14 @@
       beep(660,0.2,"square");
       setTimeout(function(){ beep(880,0.25,"square"); },140);
       if(score > save.best) save.best = score;
+      var newlyUnlocked = wasFinal && !save.laserUnlocked;
+      if(wasFinal){ save.laserUnlocked = true; }
       persistSave();
       if(wasFinal){
         document.getElementById("endingScore").textContent = score;
         document.getElementById("endingBest").textContent = save.best;
+        var unlockNote = document.getElementById("endingUnlockNote");
+        if(unlockNote){ unlockNote.classList.toggle("hidden", !newlyUnlocked); }
         setState(STATE.ENDING);
       }else{
         document.getElementById("clearScore").textContent = score;
@@ -829,12 +940,14 @@
     player.y = Math.max(player.r+2, Math.min(H-player.r-2, player.y));
     if(player.invuln>0) player.invuln = Math.max(0, player.invuln-dt*1000);
 
-    // 플레이어 발사
-    var lv = WEAPON_LEVELS[player.weaponLv];
-    player.fireAcc += dt*1000;
-    if(player.fireAcc >= lv.interval){
-      player.fireAcc = 0;
-      playerFire();
+    // 플레이어 발사 (기본 캐릭터: 확산탄 / 레이저 캐릭터는 아래 별도 처리)
+    if(player.weaponType !== "laser"){
+      var lv = WEAPON_LEVELS[player.weaponLv];
+      player.fireAcc += dt*1000;
+      if(player.fireAcc >= lv.interval){
+        player.fireAcc = 0;
+        playerFire();
+      }
     }
 
     // 엘리트 스폰 (진행률 임계치)
@@ -925,6 +1038,40 @@
         }
       }
       if(hit) playerBullets.splice(i,1);
+    }
+
+    // 레이저 캐릭터: 연속 빔 데미지 (갈래마다 직선-원 거리 판정)
+    if(player.weaponType === "laser"){
+      var llv = LASER_LEVELS[player.weaponLv];
+      var originX = player.x, originY = player.y - 8;
+      for(var bi=0; bi<llv.branches.length; bi++){
+        var ang = -Math.PI/2 + llv.branches[bi];
+        var dx = Math.cos(ang), dy = Math.sin(ang);
+        for(var ei=enemies.length-1; ei>=0; ei--){
+          var le = enemies[ei];
+          var lex = le.x-originX, ley = le.y-originY;
+          var lt = lex*dx + ley*dy;
+          if(lt <= 0) continue;
+          var perpx = lex - lt*dx, perpy = ley - lt*dy;
+          var ldist = Math.sqrt(perpx*perpx + perpy*perpy);
+          if(ldist < (llv.width/2 + le.r)){
+            le.hp -= llv.dps*dt;
+            if(le.hp <= 0){ killEnemy(le); enemies.splice(ei,1); }
+          }
+        }
+        if(boss){
+          var lbx = boss.x-originX, lby = boss.y-originY;
+          var lbt = lbx*dx + lby*dy;
+          if(lbt > 0){
+            var lbpx = lbx - lbt*dx, lbpy = lby - lbt*dy;
+            var lbdist = Math.sqrt(lbpx*lbpx + lbpy*lbpy);
+            if(lbdist < (llv.width/2 + boss.r)){
+              boss.hp -= llv.dps*dt;
+              if(boss.hp <= 0){ var deadBoss2=boss; boss=null; killEnemy(deadBoss2); }
+            }
+          }
+        }
+      }
     }
 
     // 픽업 아이템 (폭탄: 화면 전체 탄 제거)
@@ -1034,7 +1181,7 @@
     }
     ctx.shadowBlur=0;
 
-    // 플레이어 총알
+    // 플레이어 총알 (기본 캐릭터)
     for(i=0;i<playerBullets.length;i++){
       var pb = playerBullets[i];
       ctx.beginPath(); ctx.fillStyle="#7fd4cc";
@@ -1043,14 +1190,46 @@
     }
     ctx.shadowBlur=0;
 
+    // 레이저 캐릭터: 연속 빔 렌더링
+    if((state===STATE.PLAYING || state===STATE.PAUSED) && player.weaponType==="laser"){
+      var rlv = LASER_LEVELS[player.weaponLv];
+      var beamLen = Math.max(W,H) * 1.4;
+      var originX = player.x, originY = player.y - 8;
+      ctx.save();
+      ctx.lineCap = "round";
+      for(var rbi=0; rbi<rlv.branches.length; rbi++){
+        var rang = -Math.PI/2 + rlv.branches[rbi];
+        var ex = originX + Math.cos(rang)*beamLen, ey = originY + Math.sin(rang)*beamLen;
+        ctx.beginPath();
+        ctx.strokeStyle = "#c58cf0";
+        ctx.globalAlpha = 0.85;
+        ctx.lineWidth = rlv.width;
+        ctx.shadowColor = "#c58cf0"; ctx.shadowBlur = save.reduced?0:8;
+        ctx.moveTo(originX, originY);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.beginPath();
+        ctx.strokeStyle = "#f2e6fb";
+        ctx.lineWidth = Math.max(1.5, rlv.width*0.32);
+        ctx.shadowBlur = 0;
+        ctx.moveTo(originX, originY);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.shadowBlur = 0;
+    }
+
     // 플레이어
     if(state===STATE.PLAYING || state===STATE.PAUSED){
       var blink = player.invuln>0 && Math.floor(player.invuln/100)%2===0;
       if(!blink){
+        var shipColor = player.weaponType==="laser" ? "#c58cf0" : "#7fd4cc";
         ctx.save();
         ctx.translate(player.x, player.y);
-        ctx.shadowColor="#7fd4cc"; ctx.shadowBlur=save.reduced?0:6;
-        ctx.fillStyle="#7fd4cc";
+        ctx.shadowColor=shipColor; ctx.shadowBlur=save.reduced?0:6;
+        ctx.fillStyle=shipColor;
         ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(8,9); ctx.lineTo(0,4); ctx.lineTo(-8,9); ctx.closePath(); ctx.fill();
         ctx.shadowBlur=0;
         ctx.fillStyle="#ffffff";
