@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>NEON WARD — 웨이브 슈팅 미니게임</title>
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -67,6 +67,7 @@
   }
   canvas{
     display:block; width:100%; height:auto; background: #181c28;
+    touch-action: none;
   }
 
   .hud{
@@ -169,6 +170,10 @@
     margin-top: 14px;
   }
 
+  @media (max-width: 560px){
+    button{ padding: 12px 18px; font-size: 13px; }
+  }
+
   .info-panel{
     margin-top: 18px;
     border: 1px solid var(--panel-border);
@@ -226,7 +231,7 @@
       <h2>로비</h2>
       <div class="lobby-stat">최고 기록 <b id="lobbyBest">0</b></div>
       <ul class="lobby-rules">
-        <li><kbd>방향키</kbd> 또는 <kbd>WASD</kbd>로 이동 — 탄막은 자동 발사</li>
+        <li><kbd>방향키</kbd>/<kbd>WASD</kbd> 이동 (모바일은 화면을 손가락으로 드래그) — 탄막은 자동 발사</li>
         <li>일반 몬스터 처치로 진행률 상승, 진행률 50%에서 엘리트 1마리 등장</li>
         <li>2라운드부터 빠른 속사형, 4라운드부터 묵직한 탱커형 몬스터가 섞여서 등장</li>
         <li>몬스터를 처치하면 확률로 💣 폭탄 아이템이 떨어짐 — 닿으면 화면의 적 탄을 전부 제거</li>
@@ -274,7 +279,7 @@
 
   <div class="info-panel">
     <div class="status-line">현재 상태: <b id="panelState">대기중</b></div>
-    <div><strong>규칙</strong> — <kbd>방향키</kbd> 또는 <kbd>WASD</kbd>로 이동, 탄막은 자동 발사됩니다. 일반 몬스터는 상시 등장하고(2라운드부터 빠른 속사형, 4라운드부터 묵직한 탱커형이 섞여 등장), 라운드 진행률이 50%에 도달하면 엘리트가 1마리 등장합니다. 몬스터 처치 시 확률로 💣 폭탄 아이템이 떨어지며, 획득하면 화면의 적 탄을 전부 제거합니다. 진행률 100%에서 보스가 등장하며 처치 시 다음 라운드로 진행합니다. 라운드가 오를수록 일반 몬스터의 등장 간격이 짧아지고 발사하는 탄의 수와 속도도 늘어납니다. 10라운드는 최종 라운드로, 강화된 최종 보스를 처치하면 게임이 클리어됩니다.</div>
+    <div><strong>규칙</strong> — <kbd>방향키</kbd> 또는 <kbd>WASD</kbd>로 이동합니다(모바일에서는 게임 화면을 손가락으로 드래그해서 이동). 탄막은 자동 발사됩니다. 일반 몬스터는 상시 등장하고(2라운드부터 빠른 속사형, 4라운드부터 묵직한 탱커형이 섞여 등장), 라운드 진행률이 50%에 도달하면 엘리트가 1마리 등장합니다. 몬스터 처치 시 확률로 💣 폭탄 아이템이 떨어지며, 획득하면 화면의 적 탄을 전부 제거합니다. 진행률 100%에서 보스가 등장하며 처치 시 다음 라운드로 진행합니다. 라운드가 오를수록 일반 몬스터의 등장 간격이 짧아지고 발사하는 탄의 수와 속도도 늘어납니다. 10라운드는 최종 라운드로, 강화된 최종 보스를 처치하면 게임이 클리어됩니다.</div>
     <div style="margin-top:6px;"><strong>강화</strong> — 엘리트를 처치할 때마다 무기 레벨이 1씩 올라가며 최대 5단계까지 강화됩니다(발사 수·연사속도 증가). 하트는 3개이며 모두 잃으면 실패로 판정됩니다(피격 후 1초 무적).</div>
     <div style="margin-top:6px;"><strong>버튼</strong> — 🔊 소리 끄기: 효과음 음소거 · 🌀 움직임 줄이기: 화면 흔들림/글로우 감소 · 🔄 처음부터: 라운드 1부터 다시 시작(최고 기록은 유지).</div>
     <div class="diff-note">난이도 상수(테스트용) — 일반 몬스터 생성 간격: <span id="diffSpawn">1700→550</span>ms (라운드마다 감소) / 라운드 진행 시간: <span id="diffRound">40</span>s</div>
@@ -398,6 +403,36 @@
   });
   window.addEventListener("keyup", function(e){ keys[e.key.toLowerCase()] = false; });
 
+  // ---------- 터치 조작 (모바일: 화면을 드래그해서 기체 이동) ----------
+  var isTouching = false, touchCX = 0, touchCY = 0, touchOffX = 0, touchOffY = 0;
+  function touchToCanvas(clientX, clientY){
+    var rect = canvas.getBoundingClientRect();
+    var scaleX = W / rect.width, scaleY = H / rect.height;
+    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+  }
+  canvas.addEventListener("touchstart", function(e){
+    if(!e.touches || !e.touches[0]) return;
+    e.preventDefault();
+    var t = e.touches[0];
+    var pos = touchToCanvas(t.clientX, t.clientY);
+    isTouching = true;
+    // 손가락이 닿은 지점과 현재 기체 위치의 차이를 저장해두면, 손가락 아래로 기체가
+    // 순간이동하지 않고 자연스럽게 따라오는 "드래그" 조작감이 됨
+    touchOffX = player.x - pos.x;
+    touchOffY = player.y - pos.y;
+    touchCX = pos.x; touchCY = pos.y;
+  }, { passive:false });
+  canvas.addEventListener("touchmove", function(e){
+    if(!isTouching || !e.touches || !e.touches[0]) return;
+    e.preventDefault();
+    var t = e.touches[0];
+    var pos = touchToCanvas(t.clientX, t.clientY);
+    touchCX = pos.x; touchCY = pos.y;
+  }, { passive:false });
+  function endTouch(e){ if(e) e.preventDefault(); isTouching = false; }
+  canvas.addEventListener("touchend", endTouch, { passive:false });
+  canvas.addEventListener("touchcancel", endTouch, { passive:false });
+
   window.addEventListener("blur", function(){
     if(state === STATE.PLAYING){ stateBeforePause = state; setState(STATE.PAUSED); }
   });
@@ -448,6 +483,7 @@
     shake = 0;
     round = 1;
     score = 0;
+    isTouching = false;
     resetRoundVars();
     updateHud();
   }
@@ -730,6 +766,11 @@
     if(mvx!==0 && mvy!==0){ var n=Math.SQRT1_2; mvx*=n; mvy*=n; }
     player.x += mvx*player.speed*dt;
     player.y += mvy*player.speed*dt;
+    if(isTouching){
+      // 터치 드래그 중이면 손가락 이동을 그대로 따라감 (키보드 입력보다 우선)
+      player.x = touchCX + touchOffX;
+      player.y = touchCY + touchOffY;
+    }
     player.x = Math.max(player.r+2, Math.min(W-player.r-2, player.x));
     player.y = Math.max(player.r+2, Math.min(H-player.r-2, player.y));
     if(player.invuln>0) player.invuln = Math.max(0, player.invuln-dt*1000);
