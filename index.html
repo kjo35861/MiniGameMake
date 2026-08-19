@@ -94,6 +94,23 @@
   .hud .val.best{ color: var(--amber); }
   .hud .val.wlv{ color: var(--violet); }
 
+  .pause-btn{
+    display:none;
+    pointer-events:auto;
+    background: rgba(24,28,40,0.8);
+    border: 1px solid var(--panel-border);
+    color: var(--ink);
+    border-radius: 6px;
+    width: 30px; height: 26px;
+    font-size: 13px;
+    line-height: 1;
+    padding: 0;
+    margin-bottom: 6px;
+    cursor: pointer;
+  }
+  .pause-btn:hover{ border-color: var(--cyan-dim); color: var(--cyan); }
+  .pause-btn.visible{ display:inline-block; }
+
   .hearts{ font-size:16px; letter-spacing:2px; }
   .hearts .lost{ opacity:.28; filter: grayscale(1); }
 
@@ -231,6 +248,7 @@
         <div class="elite-pips" id="hudElitePips">엘리트 0/1</div>
       </div>
       <div class="col right">
+        <button id="btnPause" class="pause-btn" aria-label="일시정지" title="일시정지">⏸</button>
         <div><span class="label">SCORE</span><span class="val score" id="hudScore">0</span></div>
         <div><span class="label">BEST</span><span class="val best" id="hudBest">0</span></div>
       </div>
@@ -398,6 +416,7 @@
   var btnJumpRound10 = document.getElementById("btnJumpRound10");
   var btnJumpRound10Lobby = document.getElementById("btnJumpRound10Lobby");
   var lobbyBest = document.getElementById("lobbyBest");
+  var btnPause = document.getElementById("btnPause");
 
   document.getElementById("diffSpawn").textContent = NORMAL_SPAWN_INTERVAL_MS + "→" + MIN_SPAWN_INTERVAL_MS;
   document.getElementById("diffRound").textContent = (ROUND_DURATION_MS/1000).toFixed(0);
@@ -416,6 +435,7 @@
     ovClear.classList.toggle("hidden", next !== STATE.CLEAR);
     ovEnding.classList.toggle("hidden", next !== STATE.ENDING);
     ovPaused.classList.toggle("hidden", next !== STATE.PAUSED);
+    btnPause.classList.toggle("visible", next === STATE.PLAYING);
   }
 
   // ---------- 입력 ----------
@@ -551,6 +571,12 @@
   btnJumpRound10.addEventListener("click", startAtFinalRound);
   btnJumpRound10Lobby.addEventListener("click", startAtFinalRound);
   btnResume.addEventListener("click", resumeGame);
+  btnPause.addEventListener("click", function(){
+    if(state === STATE.PLAYING){
+      stateBeforePause = state;
+      setState(STATE.PAUSED);
+    }
+  });
 
   btnMute.addEventListener("click", function(){
     save.muted = !save.muted;
