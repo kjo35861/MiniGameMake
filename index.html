@@ -474,7 +474,7 @@
   var DRIFTER_UNLOCK_BOMBS = 15; // 드리프터 해금에 필요한 폭탄 아이템 누적 획득 수
   var INVULN_MS = 1000;
   var MAX_ROUND = 10; // 10라운드가 최종 라운드 (최종 보스 등장)
-  var BOUNCE_BULLET_LIFESPAN_MS = 4000; // 벽에 튕기는 노란 탄막(링/나선)이 사라지기까지 걸리는 시간
+  var BOUNCE_BULLET_LIFESPAN_MS = 10000; // 벽에 튕기는 노란 탄막(링/나선)이 사라지기까지 걸리는 시간
   var MISSILE_LIFESPAN_MS = 2500; // 드리프터 유도 미사일이 사라지기까지 걸리는 시간
 
   function currentSpawnInterval(){
@@ -658,11 +658,11 @@
   // count: 발사당 미사일 수, dmg: 명중 데미지, interval: 발사 간격, splash: 스플래시 반경(0이면 없음)
   var DRIFTER_LEVELS = [
     null,
-    { count:1, dmg:3.6, interval:700, splash:0 },
-    { count:1, dmg:4.8, interval:620, splash:0 },
-    { count:2, dmg:5.2, interval:620, splash:30 },
-    { count:2, dmg:6.4, interval:560, splash:36 },
-    { count:3, dmg:7.6, interval:500, splash:42 }
+    { count:1, dmg:3.6, interval:1400, splash:0 },
+    { count:1, dmg:4.8, interval:1240, splash:0 },
+    { count:2, dmg:5.2, interval:1240, splash:30 },
+    { count:2, dmg:6.4, interval:1120, splash:36 },
+    { count:3, dmg:7.6, interval:1000, splash:42 }
   ];
 
   // ---------- 게임 변수 ----------
