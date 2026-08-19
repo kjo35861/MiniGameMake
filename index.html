@@ -653,10 +653,12 @@
 
   // ---------- 게임 변수 ----------
   var player, enemyBullets, playerBullets, missiles, particles, pickups, shake;
+  var roundClearTimer = null; // 라운드 클리어 후 다음 라운드로 넘어가는 예약 타이머 (재시작 시 취소 필요)
   var round, roundElapsed, spawnAcc, score;
   var eliteSpawnedIdx, eliteKilled, bossSpawned, boss;
 
   function resetGame(){
+    if(roundClearTimer){ clearTimeout(roundClearTimer); roundClearTimer = null; }
     var weaponType = "default";
     if(save.selectedChar === "laser" && save.laserUnlocked) weaponType = "laser";
     else if(save.selectedChar === "drifter" && save.drifterUnlocked) weaponType = "drifter";
@@ -1084,7 +1086,10 @@
       }else{
         document.getElementById("clearScore").textContent = score;
         setState(STATE.CLEAR);
-        setTimeout(function(){
+        if(roundClearTimer){ clearTimeout(roundClearTimer); }
+        roundClearTimer = setTimeout(function(){
+          roundClearTimer = null;
+          if(state !== STATE.CLEAR) return; // 그 사이 재시작 등으로 상태가 바뀌었으면 무시 (다음 라운드로 잘못 넘어가는 버그 방지)
           round++;
           resetRoundVars();
           setState(STATE.PLAYING);
